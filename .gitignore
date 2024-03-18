@@ -1,0 +1,23 @@
+# Documentation from Aldec on the purpose of each file/directory at https://www.aldec.com/en/support/resources/documentation/faq/1195
+# 
+# Since Active-HDL and basically any other HDL simulation/compiler toolchain use many different (unnecessary) files
+# (with or without extensions), it's better to define a whitelist instead. (i.e., using .gitignore to only _allow_
+# certain file extensions and folders rather than using it to _exclude_ the files mentioned above.)
+
+
+# Ignore every single file and folder by default.
+/*
+
+# Only include these in the repository.
+!/.gitignore
+!/Makefile
+!/README.md
+!/LICENSE
+!/LICENSE-GPL
+!/LICENSE-LGPL
+!/LICENSE-OHLW
+!*.vhd
+!*.xdc
+!*.xpr
+!/src/
+!/data/*.dat
