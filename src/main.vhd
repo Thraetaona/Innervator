@@ -1,4 +1,4 @@
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- 
 -- Innervator: Hardware Acceleration for Artificial
@@ -25,11 +25,10 @@
 --     * <https://spdx.org/licenses/LGPL-3.0-or-later.html>; and
 --     * <https://spdx.org/licenses/CERN-OHL-W-2.0.html>.
 -- 
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
 
 -- TODO: move inside config?
 library utils;
-    --use utils.network_parser.all;
     package network_parser is new utils.file_parser
         generic map (
             g_NETWORK_DIR => "C:/Users/Thrae/Desktop/Innervator/" & "data"
@@ -46,17 +45,19 @@ library work;
     use work.fixed_pkg_for_neural.all, work.neural_typedefs.all;
     use work.network_params.all;
 
-library core;
+library neural;
 
+library core;
 
 entity network is
     port (
         g_mClk100Mhz: in std_ulogic;
+        uart_txd_in : in std_logic;
         led: out std_logic_vector (3 downto 0)
     );
 end network;
     
-architecture neural of network is 
+architecture test of network is 
 
     -- NOTE: You could also use relative paths (../) here, but they
     -- vary between simulators/synthesizers, defeating the purpose.
@@ -77,19 +78,21 @@ architecture neural of network is
     attribute dont_touch : string;
     attribute keep_hierarchy : string;
     attribute keep : string;
+    attribute mark_debug : string;
 
     --attribute dont_touch of TEST_WEIGHTS : constant is "true";
     --attribute dont_touch of TEST_BIAS : constant is "true";	
     attribute dont_touch of TEST_DATA : signal is "true";	
     --attribute keep_hierarchy of TEST_DATA : signal is "yes";
     --attribute keep of TEST_DATA : signal is "true";
-    --attribute dont_touch of result : signal is "true";	
-    --attribute dont_touch of test_value : constant is "true";
+    
+    
+    --attribute mark_debug of result : signal is "true";	
     
     
     
     
-    constant NETWORK_OBJECT : constr_params_arr_t := parse_network_from_dir(ROOT_PATH & "data");
+    --constant NETWORK_OBJECT : constr_params_arr_t := parse_network_from_dir(ROOT_PATH & "data");
     --attribute dont_touch of test_result : constant is "true";	
     
     --assert false report natural'image(num_layers) severity failure;
@@ -100,30 +103,41 @@ architecture neural of network is
     
 
     
+    signal is_done : std_ulogic;
+    signal data_read : std_logic_vector (7 downto 0);
     
     
 begin
     --led(0) <= '1';
 
 
-    assert false report real'image(to_real(NETWORK_OBJECT(1).weights(3)(5))) severity failure;
+    --assert false report real'image(to_real(NETWORK_OBJECT(1).weights(3)(5))) severity failure;
 
 
 
-    testing : entity core.neuron
+    rx_interface : entity core.uart (receiver)
+        generic map (100e6, 9_600)
+        port map (g_mClk100Mhz, uart_txd_in, is_done, data_read);
+
+
+
+
+
+
+    testing : entity neural.neuron
         generic map (TEST_WEIGHTS, TEST_BIAS)
         port map (TEST_DATA, result);
 
     
     
-    --led(1) <= '1' when result <= 0.5 else '0';
+    led(1) <= '1' when result <= 0.5 else '0';
 
     process (g_mClk100Mhz) begin
         if rising_edge(g_mClk100Mhz) then
         
-            --if (result >= 0.5) then
+            if (result >= 0.5) then
                 led(3) <= '1';
-            --end if;
+            end if;
     
         end if;
     end process;
@@ -194,4 +208,4 @@ end process;
 	led(2) <= clk_target;
 */
 
-end neural;
+end test;

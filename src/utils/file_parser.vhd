@@ -1,7 +1,7 @@
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- file_parser.vhd is a part of Innervator.
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
 
 
 library std;
@@ -13,6 +13,7 @@ library ieee;
 
 library config;
     context config.neural_context;
+    -- TODO: Make these subtypes given through generics.
 
 
 -- NOTE: These deferred constants will be "initialized" inside the
@@ -484,6 +485,6 @@ package body file_parser is
 end package body file_parser;
 
 
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
 -- END OF FILE: file_parser.vhd
------------------------------------------------------------------------
+-- --------------------------------------------------------------------

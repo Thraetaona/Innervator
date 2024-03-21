@@ -1,7 +1,7 @@
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- config.vhd is a part of Innervator.
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
 
 
 -- NOTE: You NEED to re-declare used libraries AFTER you instantiate
@@ -32,8 +32,8 @@ package fixed_pkg_for_neural is new ieee.fixed_generic_pkg
         no_warning           => false
     );
     
-library core;
-package neural_typedefs is new core.fixed_neural_pkg
+library neural;
+package neural_typedefs is new neural.fixed_neural_pkg
     generic map (
         INTEGRAL_BITS        => 4, -- NOTE: Signed
         FRACTIONAL_BITS      => 4,
@@ -118,29 +118,46 @@ context neural_context is -- VHDL-2008 feature
         use config.fixed_pkg_for_neural.all,
             config.neural_typedefs.all;
         use config.fixed_generic_pkg_bugfix.all; -- REQUIRED!
+end context neural_context;
 
+-- --------------------------------------------------------------------
+-- rtl_synthesis off
+-- pragma translate_off
+-- --------------------------------------------------------------------
+--
+-- NOTE: Unfortunately, even if I play by Vivado Simulator's rules by
+-- placing the VHDL-93 compatibility version of ieee's fixed_pkg into
+-- a local directory AND commenting-out all homographes of std_logic_
+-- vectors AND removing all references to 'line' datatypes, it still
+-- finds a way to crash abruptly, without any log whatsoever, in
+-- simulation; working with Vivado's Simulator is pointless as even
+-- a ModelSim version from 8 years ago (as of 2024) far outperforms it.
+--
+/*
+context neural_context is
+    library ieee_proposed;
+        use ieee_proposed.fixed_pkg.all;
     -- NOTE: Xilinx Vivado does not support fixed- or floating-point
     -- packages for use within its simulator, even though it can
     -- synthetize them just fine; as a workaround, use 
-    -- 'ieee_proposed' instead of 'ieee'.
+    -- a LOCAL 'ieee_proposed' instead of 'ieee'.
     --
     -- SEE: 
     --     docs.xilinx.com/r/en-US/ug900-vivado-logic-simulation/
     --         Fixed-and-Floating-Point-Packages
     --
     --     insights.sigasi.com/tech/list-known-vhdl-metacomment-pragmas
-
------------------------------------------------------------------------
--- pragma translate_off
------------------------------------------------------------------------
-    --library ieee_proposed;
-    --    use ieee_proposed.fixed_pkg.all;
------------------------------------------------------------------------
--- pragma translate_on
------------------------------------------------------------------------
+    library config;
+        use config.neural_typedefs.all;
+        use config.fixed_generic_pkg_bugfix.all; -- REQUIRED!
 end context neural_context;
+*/
+-- --------------------------------------------------------------------
+-- pragma translate_on
+-- rtl_synthesis on
+-- --------------------------------------------------------------------
 
 
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
 -- END OF FILE: config.vhd
------------------------------------------------------------------------
+-- --------------------------------------------------------------------
