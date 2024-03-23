@@ -123,7 +123,6 @@ begin
                     end if;
                 -- ----------------------------------------------------
                  
-                -- Wait TICKS_PER_BIT clock cycles to sample serial data
                 when reading =>
                     uart_state <= reading;
                 

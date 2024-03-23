@@ -44,10 +44,12 @@ library ieee;
 library work;
     use work.fixed_pkg_for_neural.all, work.neural_typedefs.all;
     use work.network_params.all;
+    use work.constants.all;
+    
+library core;
 
 library neural;
 
-library core;
 
 entity network is
     port (
@@ -58,11 +60,6 @@ entity network is
 end network;
     
 architecture test of network is 
-
-    -- NOTE: You could also use relative paths (../) here, but they
-    -- vary between simulators/synthesizers, defeating the purpose.
-    constant ROOT_PATH : string := "C:/Users/Thrae/Desktop/Innervator/";
-
 	--signal clk_target: std_ulogic := '0';
 	signal result: neural_bit;
     --constant test_value : neural_bit := to_ufixed(0.5, neural_bit'high, neural_bit'low);
@@ -92,7 +89,7 @@ architecture test of network is
     
     
     
-    --constant NETWORK_OBJECT : constr_params_arr_t := parse_network_from_dir(ROOT_PATH & "data");
+    constant NETWORK_OBJECT : constr_params_arr_t := parse_network_from_dir(DAT_PATH);
     --attribute dont_touch of test_result : constant is "true";	
     
     --assert false report natural'image(num_layers) severity failure;
@@ -103,7 +100,7 @@ architecture test of network is
     
 
     
-    signal is_done : std_ulogic;
+    signal is_done : std_ulogic := '0';
     signal data_read : std_logic_vector (7 downto 0);
     
     
@@ -111,19 +108,47 @@ begin
     --led(0) <= '1';
 
 
-    --assert false report real'image(to_real(NETWORK_OBJECT(1).weights(3)(5))) severity failure;
+    assert false report real'image(to_real(NETWORK_OBJECT(1).weights(3)(5))) severity failure;
 
 
 
-    rx_interface : entity core.uart (receiver)
-        generic map (100e6, 9_600)
+    rx_serial : entity core.uart (receiver)
+        generic map (CLK_FREQ, BIT_RATE)
         port map (g_mClk100Mhz, uart_txd_in, is_done, data_read);
 
 
 
 
+    led(3) <= '0';
+    led(1) <= '0';
 
 
+    process (g_mClk100Mhz) begin
+        if rising_edge(g_mClk100Mhz) then
+        
+            if (is_done = '1') then 
+        
+                if (data_read = X"41") then
+                    led(3) <= '1';
+                    led(1) <= '1';
+                end if;
+    
+            end if;
+            
+        end if;
+    end process;
+
+
+
+
+
+
+
+
+
+
+
+/*
     testing : entity neural.neuron
         generic map (TEST_WEIGHTS, TEST_BIAS)
         port map (TEST_DATA, result);
@@ -141,10 +166,7 @@ begin
     
         end if;
     end process;
-
-    
-    
-    
+*/
     
     
     

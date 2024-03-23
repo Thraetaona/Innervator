@@ -11,10 +11,28 @@
 -- https://insights.sigasi.com/tech/use-and-library-vhdl/
 --library work, std, ieee;
 
-
+library ieee;
+    use ieee.fixed_float_types.all;
 package constants is
+    /* Compile-Time Constants' File Location */
+    -- NOTE: You could also use relative paths (../) here, but they
+    -- vary between simulators/synthesizers, defeating the purpose.
+    constant DAT_PATH : string :=
+        "C:/Users/Thrae/Desktop/Innervator/data";
+    /* FPGA Constrains */
     constant CLK_FREQ : positive := 100e6;
     constant CLK_PERD : time     := 1 sec / CLK_FREQ;
+    /* Internal Fixed-Point Wordings */
+    constant WORD_INTG   : natural  := 4;
+    constant WORD_FRAC   : natural  := 4;
+    constant WORD_SIZE   : positive := WORD_INTG + WORD_FRAC;
+    constant GUARD_BITS  : natural  := 0;
+    constant FIXED_ROUND : fixed_round_style_type    := fixed_truncate;
+    constant FIXED_OFLOW : fixed_overflow_style_type := fixed_saturate;
+    /* UART Parameters */
+    -- NOTE: Bitrate = Baud, in the digital world
+    constant BIT_RATE : positive := 9_600;
+    constant BIT_PERD : time     := 1 sec / BIT_RATE;
 end package constants;
 
 -- "'guard_bits' defaults to 'fixed_guard_bits,' which defaults
@@ -24,19 +42,21 @@ end package constants;
 -- division and "to_real" functions to make the numbers more
 -- accurate." (Fixed point package user's guide By David Bishop)
 library ieee;
+use work.constants.all;
 package fixed_pkg_for_neural is new ieee.fixed_generic_pkg
     generic map ( -- NOTE: ieee_proposed pre VHDL-08
-        fixed_round_style    => ieee.fixed_float_types.fixed_truncate,
-        fixed_overflow_style => ieee.fixed_float_types.fixed_saturate,
-        fixed_guard_bits     => 0,
+        fixed_round_style    => FIXED_ROUND,
+        fixed_overflow_style => FIXED_OFLOW,
+        fixed_guard_bits     => GUARD_BITS,
         no_warning           => false
     );
     
 library neural;
+use work.constants.all;
 package neural_typedefs is new neural.fixed_neural_pkg
     generic map (
-        INTEGRAL_BITS        => 4, -- NOTE: Signed
-        FRACTIONAL_BITS      => 4,
+        INTEGRAL_BITS        => WORD_INTG, -- NOTE: Signed
+        FRACTIONAL_BITS      => WORD_FRAC,
         FIXED_PKG_INSTANCE   => work.fixed_pkg_for_neural
     );
 -- After instanation, you may use the Packages above as follows:
@@ -120,19 +140,24 @@ context neural_context is -- VHDL-2008 feature
         use config.fixed_generic_pkg_bugfix.all; -- REQUIRED!
 end context neural_context;
 
--- --------------------------------------------------------------------
--- rtl_synthesis off
--- pragma translate_off
--- --------------------------------------------------------------------
---
 -- NOTE: Unfortunately, even if I play by Vivado Simulator's rules by
 -- placing the VHDL-93 compatibility version of ieee's fixed_pkg into
 -- a local directory AND commenting-out all homographes of std_logic_
 -- vectors AND removing all references to 'line' datatypes, it still
--- finds a way to crash abruptly, without any log whatsoever, in
--- simulation; working with Vivado's Simulator is pointless as even
--- a ModelSim version from 8 years ago (as of 2024) far outperforms it.
---
+-- finds a way to crash abruptly in other areas (e.g., File I/O),
+-- without any log whatsoever, in simulation; working with Vivado's
+-- Simulator is pointless as even a ModelSim version from 8 years ago
+-- (as of 2024) far outperforms it.
+
+-- --------------------------------------------------------------------
+-- rtl_synthesis off
+-- pragma translate_off
+-- --------------------------------------------------------------------
+
+-- NOTE: Here, in simulation, we OVERWRITE the previous declaration;
+-- this is done because there is no other way to detect whether the
+-- code is being simulated and skip synth's code, in the latter case we
+-- also need to use a custom version of IEEE's fixed_pkg due to Vivado.
 /*
 context neural_context is
     library ieee_proposed;
@@ -152,6 +177,7 @@ context neural_context is
         use config.fixed_generic_pkg_bugfix.all; -- REQUIRED!
 end context neural_context;
 */
+
 -- --------------------------------------------------------------------
 -- pragma translate_on
 -- rtl_synthesis on
