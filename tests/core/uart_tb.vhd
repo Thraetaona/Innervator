@@ -15,14 +15,14 @@ entity uart_tb is
 end uart_tb;
  
 architecture simulation of uart_tb is
-    constant BAUD       : integer  := 9_600;
-    constant BIT_PERIOD : time     := 1 sec / BAUD;    
+    constant TEST_BYTE  : std_logic_vector (7 downto 0) := X"41";
     
     signal clock     : std_ulogic  := '0';
-    signal is_done   : std_ulogic;
-    signal data_read : std_logic_vector (7 downto 0) := (others => '0');
     signal serial_in : std_logic := '1';
-    
+    signal is_done   : std_ulogic := '0';
+    signal data_read : std_logic_vector (7 downto 0) :=
+        (others => '0');
+    signal led : std_logic_vector (3 downto 0) := (others => '0');
     -- Modified from nandland.com
     procedure send_byte_to_fpga(
                i_byte   : in  std_logic_vector (7 downto 0);
@@ -31,36 +31,86 @@ architecture simulation of uart_tb is
     begin
         -- Start Bit
         o_serial <= '0';
-        wait for BIT_PERIOD;
+        wait for c_BIT_PERD;
         
         -- Data Byte
         for i in 0 to 7 loop
             o_serial <= i_byte(i);
-            wait for BIT_PERIOD;
+            wait for c_BIT_PERD;
         end loop;
         
         -- Stop Bit
         o_serial <= '1';
-        wait for BIT_PERIOD;
+        wait for c_BIT_PERD;
     end send_byte_to_fpga; 
-    
+
 begin
  
-    -- Instantiate UART Receiver
-    dut : entity work.uart (receiver)
-        generic map (CLK_FREQ, BAUD)
-        port map (clock, serial_in, is_done, data_read);
-    
-    clock <= not clock after CLK_PERD;
+    -- Instantiate UART Receiver     
+    dut : configuration work.uart_xcvr
+        generic map (c_CLK_FREQ, c_BIT_RATE)
+        port map (
+            i_clk       => clock,
+            i_rst       => '-',
+            
+            i_rx_serial => serial_in,
+            o_rx_done   => is_done,
+            o_rx_byte   => data_read,
+            
+            i_tx_send   => '-',
+            i_tx_byte   => (others => '-'),
+            o_tx_active => open,
+            o_tx_done   => open,
+            o_tx_serial => open
+        );
+
+    clock <= not clock after c_CLK_PERD;
    
     process begin
         -- Send a command to the UART
         wait until rising_edge(clock);
-        send_byte_to_fpga(X"AB", serial_in);
+        send_byte_to_fpga(TEST_BYTE, serial_in);
         wait until rising_edge(clock);
         
-        --assert false report "Send Finished" severity failure;
+        --assert false report "Finished Sending" severity failure;
     end process;
+    
+
+    process (clock) begin
+        if rising_edge(clock) then
+        
+            if (is_done = '1') then 
+        
+                if (data_read = X"41") then
+                    led(3) <= '1';
+                    led(1) <= '1';
+                elsif (data_read = X"62") then
+                    led(3) <= '0';
+                    led(1) <= '0';
+                end if;
+                
+            end if;
+            
+        end if;
+    end process;
+
+/*
+    process (clock) begin
+        if rising_edge(clock) then
+        
+            if (is_done = '1') then 
+                --assert
+        
+                if (data_read = TEST_BYTE) then
+                    --assert
+                end if;
+    
+            end if;
+            
+        end if;
+    end process;
+*/
+
 end simulation;
 
 
