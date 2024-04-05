@@ -15,11 +15,6 @@ library config;
 
 -- A half- or full-duplex async. receiver/transmitter (in 8-N-1 frame)
 architecture transceiver of uart is -- [Structural arch.]
-    -- TODO: Make this constant somehow apply to the lower hierarchy,
-    -- somehow.  One way would be to declare it as an optional generic,
-    -- another might be using external names (hierarchical references).
-    constant TICKS_PER_BIT : positive :=
-        positive(g_CLK_FREQ / g_BAUD) - 1;
 begin
 
     receiver_component : component work.uart_pkg.uart_rcvr

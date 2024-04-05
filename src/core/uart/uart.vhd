@@ -38,6 +38,11 @@ entity uart is
         o_tx_done   : out std_ulogic; -- "Done Transmitting" signal
         o_tx_serial : out std_logic -- External connection (wire)
     );
+begin
+    -- NOTE: constants here are applied to ALL architectures
+    constant TICKS_PER_BIT : positive :=
+        positive(g_CLK_FREQ / g_BAUD) - 1;
+    constant DATA_HIGH     : natural  := o_rx_byte'high;
 end entity uart;
 
 

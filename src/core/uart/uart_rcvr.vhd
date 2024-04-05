@@ -12,10 +12,6 @@ library config;
 
 -- A simplex async. receiver (in 8-N-1 frame)
 architecture receiver of uart is -- [RTL arch.]
-    constant TICKS_PER_BIT : positive :=
-        positive(g_CLK_FREQ / g_BAUD) - 1;
-    constant DATA_HIGH : natural := o_rx_byte'high;
-
     -- Receiver's Finite-State Machine (FSM)
     type uart_rx_state_t is (
         idle, started, reading, done
