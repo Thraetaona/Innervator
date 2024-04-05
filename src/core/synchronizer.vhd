@@ -26,7 +26,7 @@ entity synchronizer is
     );
 end entity synchronizer;
  
-architecture rtl of synchronizer is
+architecture behavioral of synchronizer is
     constant CASCADES_HIGH : natural := NUM_CASCADES - 1; -- Loop count
 
     -- NOTE: I initially wanted to place this vector as individual
@@ -52,7 +52,7 @@ begin
 
     sig_out <= cascaded_regs(CASCADES_HIGH);
 
-end architecture rtl;
+end architecture behavioral;
 
 
 -- --------------------------------------------------------------------

@@ -12,27 +12,35 @@
 --library work, std, ieee;
 
 library ieee;
+    use ieee.std_logic_1164.all;
     use ieee.fixed_float_types.all;
+    
 package constants is
-    /* Compile-Time Constants' File Location */
+    /* Compile-Time Data File's Location */
     -- NOTE: You could also use relative paths (../) here, but they
     -- vary between simulators/synthesizers, defeating the purpose.
-    constant DAT_PATH : string :=
+    constant c_DAT_PATH : string :=
         "C:/Users/Thrae/Desktop/Innervator/data";
-    /* FPGA Constrains */
-    constant CLK_FREQ : positive := 100e6;
-    constant CLK_PERD : time     := 1 sec / CLK_FREQ;
+    /* FPGA Constrains & Configurations */
+    constant c_CLK_FREQ : positive   := 100e6;
+    constant c_CLK_PERD : time       := 1 sec / c_CLK_FREQ;
+    constant c_RST_SYNC : boolean    := true; -- false = async. reset
+    constant c_RST_POLE : std_ulogic := '0'; -- '0' = negative reset
+    -- TODO: Have a constant that chooses rising_ or falling_edge?
+    --constant c_EDG_RISE 
     /* Internal Fixed-Point Wordings */
-    constant WORD_INTG   : natural  := 4;
-    constant WORD_FRAC   : natural  := 4;
-    constant WORD_SIZE   : positive := WORD_INTG + WORD_FRAC;
-    constant GUARD_BITS  : natural  := 0;
-    constant FIXED_ROUND : fixed_round_style_type    := fixed_truncate;
-    constant FIXED_OFLOW : fixed_overflow_style_type := fixed_saturate;
+    constant c_WORD_INTG   : natural  := 4;
+    constant c_WORD_FRAC   : natural  := 4;
+    constant c_WORD_SIZE   : positive := c_WORD_INTG + c_WORD_FRAC;
+    constant c_GUARD_BITS  : natural  := 0;
+    constant c_FIXED_ROUND : fixed_round_style_type    :=
+        fixed_truncate;
+    constant c_FIXED_OFLOW : fixed_overflow_style_type :=
+        fixed_saturate;
     /* UART Parameters */
     -- NOTE: Bitrate = Baud, in the digital world
-    constant BIT_RATE : positive := 9_600;
-    constant BIT_PERD : time     := 1 sec / BIT_RATE;
+    constant c_BIT_RATE : positive := 9_600;
+    constant c_BIT_PERD : time     := 1 sec / c_BIT_RATE;
 end package constants;
 
 -- "'guard_bits' defaults to 'fixed_guard_bits,' which defaults
@@ -45,9 +53,9 @@ library ieee;
 use work.constants.all;
 package fixed_pkg_for_neural is new ieee.fixed_generic_pkg
     generic map ( -- NOTE: ieee_proposed pre VHDL-08
-        fixed_round_style    => FIXED_ROUND,
-        fixed_overflow_style => FIXED_OFLOW,
-        fixed_guard_bits     => GUARD_BITS,
+        fixed_round_style    => c_FIXED_ROUND,
+        fixed_overflow_style => c_FIXED_OFLOW,
+        fixed_guard_bits     => c_GUARD_BITS,
         no_warning           => false
     );
     
@@ -55,8 +63,8 @@ library neural;
 use work.constants.all;
 package neural_typedefs is new neural.fixed_neural_pkg
     generic map (
-        INTEGRAL_BITS        => WORD_INTG, -- NOTE: Signed
-        FRACTIONAL_BITS      => WORD_FRAC,
+        INTEGRAL_BITS        => c_WORD_INTG, -- NOTE: Signed
+        FRACTIONAL_BITS      => c_WORD_FRAC,
         FIXED_PKG_INSTANCE   => work.fixed_pkg_for_neural
     );
 -- After instanation, you may use the Packages above as follows:

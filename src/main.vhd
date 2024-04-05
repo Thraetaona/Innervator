@@ -53,8 +53,10 @@ library neural;
 
 entity network is
     port (
-        g_mClk100Mhz: in std_ulogic;
-        uart_txd_in : in std_logic;
+        g_mClk100Mhz : in std_ulogic;
+        uart_txd_in  : in std_logic;
+        uart_rxd_out : out std_logic;
+        ck_rst       : in std_ulogic;
         led: out std_logic_vector (3 downto 0)
     );
 end network;
@@ -79,7 +81,7 @@ architecture test of network is
 
     --attribute dont_touch of TEST_WEIGHTS : constant is "true";
     --attribute dont_touch of TEST_BIAS : constant is "true";	
-    attribute dont_touch of TEST_DATA : signal is "true";	
+    attribute keep of TEST_DATA : signal is "true";	
     --attribute keep_hierarchy of TEST_DATA : signal is "yes";
     --attribute keep of TEST_DATA : signal is "true";
     
@@ -89,7 +91,7 @@ architecture test of network is
     
     
     
-    constant NETWORK_OBJECT : constr_params_arr_t := parse_network_from_dir(DAT_PATH);
+    constant NETWORK_OBJECT : constr_params_arr_t := parse_network_from_dir(c_DAT_PATH);
     --attribute dont_touch of test_result : constant is "true";	
     
     --assert false report natural'image(num_layers) severity failure;
@@ -101,36 +103,72 @@ architecture test of network is
 
     
     signal is_done : std_ulogic := '0';
-    signal data_read : std_logic_vector (7 downto 0);
-    
-    
+    signal data_read : std_logic_vector (7 downto 0) := (others => '0');
+
+    signal not_rst : std_ulogic := '0';
 begin
-    --led(0) <= '1';
-
-
-    assert false report real'image(to_real(NETWORK_OBJECT(1).weights(3)(5))) severity failure;
 
 
 
-    rx_serial : entity core.uart (receiver)
-        generic map (CLK_FREQ, BIT_RATE)
-        port map (g_mClk100Mhz, uart_txd_in, is_done, data_read);
+    --assert false report real'image(to_real(NETWORK_OBJECT(1).weights(3)(5))) severity failure;
+/*
+    rx_serial : configuration core.uart_xcvr
+        generic map (c_CLK_FREQ, c_BIT_RATE)
+        port map (
+            i_clk       => g_mClk100Mhz,
+            i_rst       => ck_rst,
+            
+            i_rx_serial => uart_txd_in,
+            o_rx_done   => is_done,
+            o_rx_byte   => data_read,
+            
+            i_tx_send   => 'Z',
+            i_tx_byte   => (others => 'Z'),
+            o_tx_active => open,
+            o_tx_done   => open,
+            o_tx_serial => open
+        );
 
 
+    process (g_mClk100Mhz) begin
+        if rising_edge(g_mClk100Mhz) then
+                
+            if (is_done = '1') then 
+                if (data_read = x"41") then
+                    led(3) <= '1';
+                    led(1) <= '1';
+                elsif (data_read = x"62") then
+                    led(3) <= '0';
+                    led(1) <= '0';  
+                end if;
 
 
-    led(3) <= '0';
-    led(1) <= '0';
+            end if;
+            
+        end if;
+    end process;
+*/
 
+
+    --not_rst <= not ck_rst;
+
+    testing : entity neural.neuron
+        generic map (TEST_WEIGHTS, TEST_BIAS, 2)
+        port map (TEST_DATA, result, g_mClk100Mhz, '1', '1', is_done);
+
+    
+    
+    --led(1) <= '1' when result <= 0.5 else '0';
 
     process (g_mClk100Mhz) begin
         if rising_edge(g_mClk100Mhz) then
         
             if (is_done = '1') then 
-        
-                if (data_read = X"41") then
+            
+                if (result >= 0.5) then
                     led(3) <= '1';
-                    led(1) <= '1';
+                elsif (result < 0.5) then
+                    led(3) <= '0';
                 end if;
     
             end if;
@@ -138,35 +176,6 @@ begin
         end if;
     end process;
 
-
-
-
-
-
-
-
-
-
-
-/*
-    testing : entity neural.neuron
-        generic map (TEST_WEIGHTS, TEST_BIAS)
-        port map (TEST_DATA, result);
-
-    
-    
-    led(1) <= '1' when result <= 0.5 else '0';
-
-    process (g_mClk100Mhz) begin
-        if rising_edge(g_mClk100Mhz) then
-        
-            if (result >= 0.5) then
-                led(3) <= '1';
-            end if;
-    
-        end if;
-    end process;
-*/
     
     
     
