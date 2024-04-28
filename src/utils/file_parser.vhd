@@ -4,6 +4,9 @@
 -- --------------------------------------------------------------------
 
 
+-- TODO: Because the std.textio is so limited in VHDL, maybe
+-- try and investigate VHDL's VHPI to call C/C++ functions?
+
 library std;
     use std.textio.all;
 
@@ -11,14 +14,10 @@ library ieee;
     use ieee.std_logic_1164.all;
     --use ieee.std_logic_textio.all;
 
-library config;
-    context config.neural_context;
-    -- TODO: Make these subtypes given through generics.
+-- TODO: Make these subtypes given through generics, in VHDL-2019.
+library neural;
+    context neural.neural_context;
 
-
--- NOTE: These deferred constants will be "initialized" inside the
--- Package's body, after the above function declarations (which
--- will be used in these constants) have been "elaborated."
 -- NOTE: The reason this package has been divided into two, including
 -- an auxiliary one, is because I could not use the same functions
 -- defined in a single package's body inside constant initializations
@@ -28,7 +27,12 @@ library config;
 --     Because I also needed to use said deferred constants inside 
 -- the subtypes/types defined in the actual package's header, I
 -- would trigger simulator errors related to "illegal use of deferred
--- constants."  So, this was the only solution to access bo
+-- constants."  So, this was the only solution to access both.
+--     NOTE: Actually, the above-mentioned note no longer applies, 
+-- because I was able to find a way to constrain array types as
+-- subtypes which could then be connected to external, unconstrained
+-- types in constant evaluations, but it is nonetheless a good
+-- practice to separate auxiliary functionality here.
 package file_parser_aux is 
 
     -- NOTE: Because the fixed-point package only provides procedures
@@ -315,36 +319,15 @@ library ieee;
 library work;
     use work.file_parser_aux.all;
     
-library config;
-    context config.neural_context;
-
+library neural;  
+    context neural.neural_context;
 
 package file_parser is
-    generic (
-        g_NETWORK_DIR : string
-    );
-    use work.file_parser_aux.all;
-
-    constant c_NUM_LAYERS : natural :=
-        get_num_layers(g_NETWORK_DIR);
-    constant c_LAYER_DIMS : dimensions_array :=
-        get_network_dimensions(g_NETWORK_DIR, c_NUM_LAYERS);
-    constant c_MAX_DIM    : dimension :=
-        max(c_LAYER_DIMS);
-
-
-    subtype constr_params_t is layer_parameters (
-        weights (0 to c_MAX_DIM.rows-1) (0 to c_MAX_DIM.cols-1),
-        biases  (0 to c_MAX_DIM.rows-1)
-    );
-    type constr_params_arr_t is
-        array (0 to c_NUM_LAYERS-1) of constr_params_t;
-
 
     impure function parse_network_from_dir(
         network_dir : string
-    ) return constr_params_arr_t;
-   
+    ) return network_layers;
+    
 end package file_parser;
 
 -- NOTE: In VHDL, you are not able to pass or return ranges (e.g.,
@@ -353,7 +336,7 @@ end package file_parser;
 --
 -- NOTE: In VHDL, you also cannot pass 'file' handles/objects; so,
 -- the solution is to reduntantly open/close the files EACH time.
-package body file_parser is  
+package body file_parser is
     -- NOTE Due to VHDL limitations, and to avoid allocators (i.e.,
     -- 'access', 'new', and dynamic concatenation), which are
     -- completely disallowed in synthesis (EVEN to just initialize
@@ -377,11 +360,11 @@ package body file_parser is
     impure function parse_elements(
         file_path : in string;
         file_dim  : in dimension
-    ) return neural_array is
+    ) return neural_vector is
         file     file_handle : text open read_mode is file_path;
         variable file_row    : line;
         variable row_elem    : read_t; -- Intermediary for conversion
-        variable result_arr  : neural_array (0 to file_dim.rows-1);
+        variable result_arr  : neural_vector (0 to file_dim.rows-1);
     begin
         -- No need for an outer loop; there is only ONE "row" of biases
         
@@ -461,21 +444,44 @@ package body file_parser is
     -- custom constrained record types, earlier in the package's header
     impure function parse_network_from_dir(
         network_dir : string
-    ) return constr_params_arr_t is
-        variable layer_params : constr_params_t;
+    ) return network_layers is
+    
+        constant NUM_LAYERS : natural :=
+            get_num_layers(network_dir);
+        constant LAYER_DIMS : dimensions_array :=
+            get_network_dimensions(network_dir, NUM_LAYERS);
+        constant MAX_DIM    : dimension :=
+            max(LAYER_DIMS);
+    
+        subtype constr_params_t is layer_parameters (
+            weights (0 to MAX_DIM.rows-1) (0 to MAX_DIM.cols-1),
+            biases  (0 to MAX_DIM.rows-1)
+        );
+        -- Unfortunately, there is no way to derive an array type based
+        -- on its already-constrained subtype; this has to be repeated.
+        -- SEE: https://gitlab.com/IEEE-P1076/VHDL-Issues/-/issues/312
+        subtype constr_params_arr_t is network_layers
+            (0 to NUM_LAYERS-1)
+            (
+                weights (0 to MAX_DIM.rows-1) (0 to MAX_DIM.cols-1),
+                biases  (0 to MAX_DIM.rows-1)
+            );
+    
+        variable current_layer : constr_params_t;
         variable result_arr : constr_params_arr_t;
     begin
 
-        per_layer : for i in 0 to c_NUM_LAYERS-1 loop
-        
-            layer_params.biases  := resize(parse_elements(
-                get_biases_file(g_NETWORK_DIR, i), c_LAYER_DIMS(i)
-            ), c_MAX_DIM);
-            layer_params.weights := resize(parse_elements(
-                get_weights_file(g_NETWORK_DIR, i), c_LAYER_DIMS(i)
-            ), c_MAX_DIM);
+        per_layer : for i in 0 to NUM_LAYERS-1 loop
+                
+            current_layer.dims    := LAYER_DIMS(i);
+            current_layer.biases  := resize(parse_elements(
+                get_biases_file(network_dir, i), LAYER_DIMS(i)
+            ), MAX_DIM);
+            current_layer.weights := resize(parse_elements(
+                get_weights_file(network_dir, i), LAYER_DIMS(i)
+            ), MAX_DIM);
             
-            result_arr(i) := layer_params;
+            result_arr(i) := current_layer;
         end loop per_layer;
         
         return result_arr;

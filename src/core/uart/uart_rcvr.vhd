@@ -19,7 +19,7 @@ architecture receiver of uart is -- [RTL arch.]
     signal uart_rx_state : uart_rx_state_t := idle;
     
     -- Synchronized signal (from a metastable input signal).
-    signal synced_serial : std_ulogic := '0';
+    signal synced_serial : std_ulogic;
     
     signal tick_cnt  : natural range 0 to TICKS_PER_BIT := 0;
     signal bit_index : natural range 0 to DATA_HIGH := 0;
