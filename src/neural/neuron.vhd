@@ -6,13 +6,14 @@
 
 library ieee;
     use ieee.std_logic_1164.all;
-    --use ieee.math_real.MATH_E; -- NOT synthetizable; use as generics!
   
 library work;  
     context work.neural_context;
 
 library config;
     use config.constants.all;
+
+library core;
 
 -- TODO: Generically 'type' these, at least in VHDL-2019.
 entity neuron is
@@ -61,7 +62,7 @@ architecture pipelined of neuron is
     -- our given input itself might reset or become cleared right after
     -- 'i_fire' is set to high, we need to sample and locally store the
     -- input at that time for later use within the processing stages.
-    signal inputs_reg : inputs'subtype;
+    signal inputs_local : inputs'subtype;
     
     -- Current iteration number (total number of
     -- iterations = number of data / size of batches).
@@ -71,53 +72,55 @@ architecture pipelined of neuron is
     function activation_function(
         x : neural_dword
     ) return neural_bit is
-    
-        alias in_type  is neural_dword;
-        alias out_type is neural_bit;
-        -- TODO: Automate the generation of these constant look-up
-        -- parameters to be done at compile-time, based on their sizes.
-        
-        -- Boundaries beyond which linear approximation begins erring.
-        constant UPPER_BOUND : in_type :=
-            to_sfixed(+2.0625, in_type'high, in_type'low);
-        constant LOWER_BOUND : in_type :=
-            to_sfixed(-2.0625, in_type'high, in_type'low);
-            
-        constant LINEAR_M : in_type := -- M (the coefficient)
-            to_sfixed(0.1875, in_type'high, in_type'low);
-        constant LINEAR_C : in_type := -- C (the displacement)
-            to_sfixed(0.5, in_type'high, in_type'low);
-        
-        -- Look-Up constants for when the input value falls beyond
-        -- the Linear Approximation's acceptable error range.
-        --
-        -- NOTE: ZERO and ONE do not correspond to exactly 0.0 and 1.0;
-        -- instead, they are a bit "leaky," similar to Sigmoid's output
-        constant ZERO : out_type :=
-            to_ufixed(0.0625, out_type'high, out_type'low);
-        constant ONE  : out_type :=
-            to_ufixed(0.9375, out_type'high, out_type'low);
-            
-        -- A temporary variable is required, because only VHDL-2019
-        -- allows conditional assignment (i.e., when...else) in
-        -- front of return statements, and we are using VHDL-2008.
-        variable result : out_type;
     begin
-
-        -- It is rather hard to implement exponents and logarithms
-        -- in an FPGA; it would use too many logic blocks.  Even
-        -- approximating Sigmoid using the absolute value would
-        -- still require 'x' to be divided, very slowly, by (1 + |x|).
-        -- So, a linear approximation is used instead.
-        result := ZERO when x < LOWER_BOUND else
-                  ONE  when x > UPPER_BOUND else
-                  resize(to_ufixed((LINEAR_M * x) + LINEAR_C), result);
-        
-        return result;
-        
+        -- TODO: Automatically select between activations, as needed.
+        return work.activation.sigmoid(x);
     end function activation_function;
     
+    
+    procedure mac_unit(
+        signal value_a : in  neural_word;
+        signal value_b : in  neural_bit;
+        variable sum_in  : in  neural_dword;
+        variable sum_out : out neural_dword
+    ) is
+    begin
+        sum_out := resize(
+            sum_in
+            + -- Add
+            resize(
+                value_a
+                * -- Multiply
+                resize( -- Resize, if needed
+                    to_sfixed(value_b),
+                value_a),
+            sum_in),
+        sum_out);     
+    end procedure mac_unit;
+    
+    signal inputs_unreg  : inputs'element;
+    signal weights_unreg : g_NEURON_WEIGHTS'element;
+    signal inputs_reg    : inputs'element;
+    signal weights_reg   : g_NEURON_WEIGHTS'element;
+    
+    /*
+    procedure register_inputs is new core.pipeliner.registrar
+        generic map (2, inputs'element);
+        
+    procedure register_weights is new core.pipeliner.registrar
+        generic map (2, g_NEURON_WEIGHTS'element);  
+    */
 begin
+
+    --register_inputs(i_clk, inputs_unreg, inputs_reg);
+    --register_weights(i_clk, weights_unreg, weights_reg);
+
+    register_inputs : entity core.pipeliner_single
+        generic map (1, neural_bit)
+        port map (i_clk, inputs_unreg, inputs_reg);
+    register_weights : entity core.pipeliner_single
+        generic map (1, neural_word)
+        port map(i_clk, weights_unreg, weights_reg);
 
     -- NOTE: This form of pipelining would only fix timing issues,
     -- not resource/logic consumption.  A superior form of pipelining
@@ -208,6 +211,7 @@ begin
         
         -- Number of iterations (if batch processing is enabled)
         constant ITER_HIGH : natural := NUM_INPUTS - g_BATCH_SIZE;
+
         
         procedure perform_reset is
         begin
@@ -225,15 +229,22 @@ begin
                         neuron_state <= idle;
                         
                         -- Reset back to default values
-                        output       <= (others => '0');
-                        o_done       <= '0';
-                        inputs_reg   <= (others => (others => '0'));
-                        iter_idx     <= 0;
-                        weighted_sum := 
+                        output        <= to_ufixed(0, output);
+                        o_done        <= '0';
+                        inputs_local  <=
+                            (others => to_ufixed(0, inputs_unreg));
+                        
+                        inputs_unreg  <= to_ufixed(0, inputs_unreg);
+                        weights_unreg <= to_sfixed(0, weights_unreg);
+                        iter_idx      <= g_BATCH_SIZE;
+                        weighted_sum  := 
                             resize(g_NEURON_BIAS, weighted_sum);
                             
                         if i_fire = '1' then
-                            inputs_reg   <= inputs;
+                            inputs_local  <= inputs;
+                            inputs_unreg  <= inputs(0);
+                            weights_unreg <=g_NEURON_WEIGHTS(0);
+                            
                             neuron_state <= busy;
                         end if;
                     -- ------------------------------------------------
@@ -241,78 +252,95 @@ begin
                     when busy =>
                         neuron_state <= busy;
                         
-                        o_done       <= '0';
+                        -- TODO: Have SUB state-machines here
+                        -- TODO: Also pipeline the "P" DSP output
+                        a
+                        
+                        
                         -- TODO: Have a generic switch to toggle
                         -- between computing the activation function
                         -- DURING the last batch iteration (1 clock 
                         -- cycle less latency), or AFTER a clock cycle
                         -- passes, like now (better logic timing).
-                        --
+
+                        -- NOTE: This loop is unrolled
+                        -- into actual hardware.
+                        for i in 0 to g_BATCH_SIZE-1 loop
+                            -- This is a running accumulator; the
+                            -- result of the multiplication of each
+                            -- weight by its associated input is
+                            -- resized (IF NEEDED) to the size of
+                            -- the Accumulator and then added to it
+
+                            -- IEEE's add_carry() seems broken.
+                            /*
+                            add_carry(
+                                L      => weighted_sum,
+                                R      => product_reg,
+                                c_in   => '0',
+                                result => weighted_sum,
+                                c_out  => dummy_carry -- IGNORED!
+                            );
+                            */
+                              
+                            inputs_unreg  <= inputs_local(iter_idx+i);
+                            weights_unreg <= g_NEURON_WEIGHTS(iter_idx+i);                            
+                            
+                            -- Fused Multiply-Adder
+                            /*weighted_sum := resize(
+                                weighted_sum
+                                + -- Add
+                                resize(
+                                    weights_reg
+                                    * -- Multiply
+                                    resize( -- Resize, if needed
+                                        to_sfixed(
+                                            inputs_reg
+                                        ),
+                                    g_NEURON_WEIGHTS'element'high,
+                                    g_NEURON_WEIGHTS'element'low),
+                                weighted_sum),
+                            weighted_sum);*/
+                            
+                            mac_unit(
+                                value_a => weights_reg,
+                                value_b => inputs_reg,
+                                sum_in  => weighted_sum,
+                                sum_out => weighted_sum
+                            );
+                            
+                        end loop;
+                                 
+                        iter_idx <= iter_idx + g_BATCH_SIZE;
+                        
                         -- NOTE: Short-circuited to one at compile-time
-                        data_remain : if
+                        sum_calculated : if
                             -- Not processing in batches (iterate once)
-                            (ITER_HIGH  = 0 and iter_idx = 0) or
+                            (ITER_HIGH  = 0 and iter_idx /= 0) or
                             -- OR: Processing in batches
-                            (ITER_HIGH /= 0 and iter_idx < ITER_HIGH)
+                            (ITER_HIGH /= 0 and iter_idx >= ITER_HIGH)
                         then
-                            -- NOTE: This loop is unrolled
-                            -- into actual hardware.
-                            for i in 0 to g_BATCH_SIZE-1 loop
-                                -- This is a running accumulator; the
-                                -- result of the multiplication of each
-                                -- weight by its associated input is
-                                -- resized (IF NEEDED) to the size of
-                                -- the Accumulator and then added to it
-
-                                -- IEEE's add_carry() seems broken.
-                                /*
-                                add_carry(
-                                    L      => weighted_sum,
-                                    R      => product_reg,
-                                    c_in   => '0',
-                                    result => weighted_sum,
-                                    c_out  => dummy_carry -- IGNORED!
-                                );
-                                */
-                                  
-                                -- Fused Multiply-Adder
-                                weighted_sum := resize(
-                                    weighted_sum
-                                    + -- Add
-                                    resize(
-                                        g_NEURON_WEIGHTS(iter_idx+i)
-                                        * -- Multiply
-                                        resize( -- Resize, if needed
-                                            to_sfixed(
-                                                inputs_reg(iter_idx+i)
-                                            ),
-                                        g_NEURON_WEIGHTS'element'high,
-                                        g_NEURON_WEIGHTS'element'low),
-                                    weighted_sum),
-                                weighted_sum);         
-                                         
-                            end loop;
-                                     
-                            iter_idx <= iter_idx + g_BATCH_SIZE;
-                        else
-                            -- Perform activation on the weighted sum
-                            output <= 
-                                activation_function(weighted_sum);
-
-                            iter_idx   <= 0;
+                            --iter_idx     <= 0;
                             neuron_state <= done;
-                        end if data_remain;
+                        end if sum_calculated;
                     -- ------------------------------------------------
     
                     when done =>
+                        -- Perform activation on the weighted sum.
+                        -- (It is done here to avoid logic/gate delay
+                        -- that'd occur in the previous case's branch)
+                        output       <= 
+                            activation_function(weighted_sum);
+                            
                         -- Signal that we're no longer busy,
                         -- for (at least) 1 clock cycle
-                        o_done     <= '1';
+                        o_done       <= '1';
                         
+                        -- Go back to the idle state and await new data
                         neuron_state <= idle;
                     -- ------------------------------------------------
                         
-                    -- Hardening in case of "unknown" states    
+                    -- Hardening in case of "unknown" states
                     when others => -- 1-clock-long cleanup phase
                         perform_reset;
                     -- ------------------------------------------------

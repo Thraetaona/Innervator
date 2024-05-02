@@ -83,8 +83,10 @@ architecture neural of network is
     -- and clunky, especially for nested arrays and very large ones.
     signal layers_done    : std_ulogic_vector (0 to NUM_LAYERS-1);
     -- This is a NESTED array of 'neural_bvector' (an array type).
-    -- Also, note that we cannot use the 'element attribute here;
-    -- each element of the parameter array is a record on its own.
+    --
+    -- NOTE: We cannot use the 'element attribute here; because
+    -- each element of the parameter array is a record on its own,
+    -- toolchains will break apart on such complicated expressions.
     signal layers_outputs : neural_bmatrix (0 to NUM_LAYERS-1)
         (0 to g_NETWORK_PARAMS(0).weights'length-1);
         
@@ -185,6 +187,7 @@ begin
     -- because each layer's done signal was connected to the following
     -- layers' 'fire' signal, continuing to keep said layer's done 
     -- at 1 would result in proceeding layers to never end firing.
+    
     toggle_out : process (i_clk, i_rst) is
         procedure perform_reset is
         begin
@@ -201,10 +204,8 @@ begin
                 if network_done = '1' then
                     o_done  <= '1';
                     outputs <= network_outputs;
-                end if;
-                
-                -- Not "elsif" because they could trigger together
-                if i_fire = '1' then
+                -- "elsif" so 'network_done' lasts at least one cycle.
+                elsif i_fire = '1' then
                     o_done  <= '0';
                     outputs <= (others => (others => '0'));
                 end if;
@@ -213,6 +214,21 @@ begin
         end if;
     end process toggle_out;
     
+    /*
+    toggle_out : process (all) is
+    begin
+
+        if network_done = '1' then
+            o_done  <= '1';
+            outputs <= network_outputs;
+        -- "elsif" so 'network_done' lasts at least one cycle.
+        elsif i_fire = '1' then
+            o_done  <= '0';
+            outputs <= (others => (others => '0'));
+        end if;
+                
+    end process toggle_out;
+    */
 end architecture neural;
 
 

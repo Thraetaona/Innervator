@@ -60,18 +60,6 @@ package fixed_neural_pkg is
     */
     
     /* Scalars */
-    -- NOTE: Thanks to Vivado's synthesizer being completely broken
-    -- when it comes to unresolved (u_) types, we HAVE to define all
-    -- these as resolved ones, instead.  For some reason, attempting
-    -- to assign an unresolved value, like this, would result in a
-    -- "complex assignment not supported" error message...
-    --    In doing so, we lose on the benefits of having compile-time
-    -- checks for not driving wires with multiple drivers, but that is
-    -- the price to pay when it comes to synthesis tools.  I also tried
-    -- experimenting with Synopsys Synplify; they had broken other
-    -- parts of VHDL, so some compromise is unavoidable.
-    -- TODO: the bug wasnt actually with u_, it was with instantiating
-    -- generic packages on top of generic packages in a spaghetti sense
     subtype neural_bit    is -- An "analogue" bit with the range [0, 1)
         u_ufixed (-1 downto -(g_FRACTIONAL_BITS*2)); -- UNSIGNED and <1
     subtype neural_nibble is -- Half-word
@@ -170,9 +158,9 @@ package fixed_neural_pkg is
     -- Also, you may have "dynamically sized" arrays by concatenating
     -- new "new" definitions with previous ones.  Lastly, you may re-
     -- use declared pointer types by using "deallocate()" on them.
-    type neural_word_ptr is access neural_word;
-    type neural_vector_ptr is access neural_vector;
-    type neural_matrix_ptr is access neural_matrix;
+    type neural_word_ptr    is access neural_word;
+    type neural_vector_ptr  is access neural_vector;
+    type neural_matrix_ptr  is access neural_matrix;
     type network_layers_ptr is access network_layers;
     
     -- NOTE: VHDL doesn't permit files of multidimensionals (e.g.,
