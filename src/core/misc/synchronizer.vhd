@@ -15,6 +15,17 @@ library ieee;
 -- flip-flops at the input is a common solution; it provides
 -- additional time for the metastable signal to settle into a
 -- stable 0 or 1 before being utilized elsewhere in the circuit.
+--     This is called "synchronizing" or "de-glitching."
+--
+-- NOTE: A good portion of this synchronization also overlaps with
+-- "pipelining," because both use a series of clocked flip-flops.
+-- However, a good reason to separate them is to (hopefully) have
+-- the synthesization tool lay out pipelines or synchronizers
+-- close to their own respective groups.  Also, the synchronizer
+-- might be extended later on (maybe to support multiple clocks)
+-- and separating them early-on would be beneficial, in that case.
+--
+-- TODO: Have a variadic variant for std_(u)logic VECTORS.
 entity synchronizer is
     generic (
         NUM_CASCADES : natural range 2 to natural'high := 3
@@ -42,6 +53,7 @@ architecture behavioral of synchronizer is
         (CASCADES_HIGH downto 0) := (others => '0');
 begin
 
+    -- TODO: Decide if we need reset states for these flip-flops.
     cascade_chain : for i in 0 to CASCADES_HIGH generate
         cascade_register : process (clk_in) begin
             if rising_edge(clk_in) then

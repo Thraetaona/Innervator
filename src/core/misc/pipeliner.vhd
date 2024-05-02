@@ -104,6 +104,13 @@ package pipeliner is
 
 end package pipeliner;
 
+-- Instantiate in the following format:
+--
+--     procedure register_signal is new core.pipeliner.registrar
+--         generic map (3, std_logic_vector);
+--
+--     register_signal(i_clk, sig_unreg, sig_reg);
+-- 
 package body pipeliner is
 
     -- Works on a single signal at a time
@@ -138,16 +145,16 @@ package body pipeliner is
         -- one cannot help but wonder why VHDL just doesn't let us
         -- declare signals directly in the first place; the reason
         -- is rather arbitrary and lies in (now-ancient) design
-        -- choices of VHDL an Ada.
-        variable pipeline_regs : t_arg_arr (g_NUM_STAGES-1 downto 0);
+        -- choices of VHDL and Ada.
+        variable pipeline_regs : t_arg_arr (g_NUM_STAGES-2 downto 0);
         
         -- Do NOT infer shift registers (SRL) in place of flip-flops.
         --attribute shreg_extract : string;
         --attribute shreg_extract of pipeline_regs : variable is "no";
     begin    
-        pipeline_regs(0) := i_signal;
+        pipeline_regs(0) := i_signal when rising_edge(i_clk);
         
-        for i in 1 to g_NUM_STAGES-1 loop
+        for i in 1 to g_NUM_STAGES-2 loop
             pipeline_regs(i) :=
                 pipeline_regs(i - 1) when rising_edge(i_clk);
         end loop;
@@ -208,13 +215,13 @@ package body pipeliner is
 
 end package body pipeliner;
 
-/*
+
 library ieee;
     use ieee.std_logic_1164.all;
 
 entity pipeliner_single is
     generic (
-        g_NUM_STAGES : natural range 2 to natural'high := 3;
+        g_NUM_STAGES : natural range 1 to natural'high := 3;
         type arg_type
     );
     port (
@@ -227,24 +234,28 @@ entity pipeliner_single is
 end entity pipeliner_single;
  
 architecture behavioral of pipeliner_single is
-    constant STAGES_HIGH : natural := g_NUM_STAGES - 2;
+    constant STAGES_HIGH : natural := g_NUM_STAGES - 1;
     signal pipeline_regs : arg_arr_type
-        (STAGES_HIGH downto 0);
+        (STAGES_HIGH downto 1);
 begin
-        
-        pipeline_chain : for j in 0 to STAGES_HIGH generate
+    single_pipeline : if g_NUM_STAGES = 1 generate
+        o_signal <= i_signal;
+    else generate
+    
+        pipeline_chain : for j in 1 to STAGES_HIGH generate
             pipeline_register : process (i_clk) begin
                 if rising_edge(i_clk) then
-                    pipeline_regs(j) <=
-                        i_signal when (j = 0) else pipeline_regs(j-1);
+                    pipeline_regs(j) <= i_signal when (j = 1)
+                        else pipeline_regs(j-1);
                 end if;
             end process pipeline_register;
         end generate pipeline_chain;
     
         o_signal <= pipeline_regs(STAGES_HIGH);
-
+    
+    end generate;
 end architecture behavioral;
-*/
+
 
 
 -- --------------------------------------------------------------------
