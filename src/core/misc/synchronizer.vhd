@@ -1,7 +1,7 @@
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- synchronizer.vhd is a part of Innervator.
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 
 library ieee;
@@ -51,6 +51,17 @@ architecture behavioral of synchronizer is
     -- https://groups.google.com/g/comp.lang.vhdl/c/rm97yoJwcWc
     signal cascaded_regs : std_ulogic_vector
         (CASCADES_HIGH downto 0) := (others => '0');
+        
+    /* Xilinx Vivado/XST */
+    -- Disable the conversion of flip-flops to to shift-registers
+    attribute shreg_extract : string;
+    -- Specifies that registers receive async. data.
+    attribute ASYNC_REG     : boolean; -- Also implies DONT_TOUCH.
+    
+    -- TODO: See if I should apply this to the input or all cascades?
+    -- TODO: Document motive from https://www.01signal.com/electronics/iob-registers/
+    attribute shreg_extract of cascaded_regs : signal is "no";
+    attribute ASYNC_REG     of cascaded_regs : signal is true;
 begin
 
     -- TODO: Decide if we need reset states for these flip-flops.
@@ -71,6 +82,6 @@ begin
 end architecture behavioral;
 
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- END OF FILE: synchronizer.vhd
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------

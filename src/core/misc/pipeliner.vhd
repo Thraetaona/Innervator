@@ -1,7 +1,7 @@
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- pipeliner.vhd is a part of Innervator.
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 
 -- For background, sometimes operations/logic inside a process might
@@ -18,6 +18,17 @@
 -- we ask it to.  Also, certain built-in blocks, such as DSPs, will
 -- "pull in" our externally registered (pipelined) signals and have
 -- the same delaying effect.
+--     Another type of delay is "routing" delay, which is actually
+-- more common nowadays and in newer FPGAs.  Routing delay refers
+-- to the actual, physicel delay caused by electricity moving too
+-- "slowly" in an internal FPGA route (i.e., wire), and it is often
+-- caused when you try to access specific hard-macro components
+-- (e.g., a DSP or BRAM) that only exists in a specific location
+-- of your FPGA chip, while you have too much logic depend on that,
+-- which, in turn, makes it physically impossible for the router to
+-- place them all next to said hard-macro instantiation.  The solution
+-- is exactly the same: convert the routed path to a "multi-cycle"
+-- clock using flip-flop chains.
 --     Note that delaying does imply that external users have to
 -- "wait" for the processing to be finished before they can supply
 -- new data to us; while the old data is going through flip-flop
@@ -25,17 +36,20 @@
 -- If the data D1 is given at nanosecond 0 and D2 at 10, then
 -- (in a double-registering pipeline), output O1 would be returned
 -- at nanosecond 20 AND O2 would STILL appear at 30.  In other words,
--- we didn't have to wait for O1 to be fully done before passing D2.
+-- we didn't have to wait for O1 to be fully done before passing D2,
+-- and you could think of it as a car assembly line.
 --     Be aware that timing violations do not 100% mean that your
 -- design won't work in practice.  Synthesis tools account for all
 -- extremities when calculating timing violations; they consider
 -- worst-case scenarios and ascertain that your described logic will
 -- finish under those circumstances within the allocated clock cycle.
--- If you proceed with having small timing errors, your design might
+-- If you proceed with having tiny timing errors, your design might
 -- work just fine, but the moment your FPGA package gets too heated
 -- or too cold (for example), it'll have a higher tendency to fail.
---     This closely relates to a "synchronizer," which also uses
--- delay lines to solve a different problem (metastability).
+--     Also, this closely relates to a "synchronizer," which also
+-- uses delay lines to solve a different problem (metastability).
+--     Lastly, you might have to enable "retiming" optimizations in
+-- your synthesis tools so that they may take advantage of pipelining.
 
 library ieee;
     use ieee.std_logic_1164.all;
@@ -148,9 +162,20 @@ package body pipeliner is
         -- choices of VHDL and Ada.
         variable pipeline_regs : t_arg_arr (g_NUM_STAGES-2 downto 0);
         
-        -- Do NOT infer shift registers (SRL) in place of flip-flops.
-        --attribute shreg_extract : string;
-        --attribute shreg_extract of pipeline_regs : variable is "no";
+        -- Synthesis tools will often replace a series of flip-flops
+        -- with better primitives, like shift-registers, that "achieve"
+        -- the same delaying effect.  However, we might sometimes WANT
+        -- to use flip-flops specifically, so we can turn off that
+        -- optimization by using vendor-specific attribute definitions:
+        attribute shreg_extract      : string;
+        attribute register_balancing : string;
+        attribute syn_allow_retiming : boolean;
+        attribute shreg_extract of pipeline_regs : variable is "no";
+        attribute register_balancing of Sig_out : signal is ATTR_REG_BALANCING;
+        attribute syn_allow_retiming of Sig_out : signal is true;
+        -- Also, note that avoiding the usage of explicit reset signals
+        -- may also result in the same shift-register (SRL) conversion.
+        --     ednasia.com/coding-consideration-for-pipeline-flip-flops
     begin    
         pipeline_regs(0) := i_signal when rising_edge(i_clk);
         
@@ -238,6 +263,8 @@ architecture behavioral of pipeliner_single is
     signal pipeline_regs : arg_arr_type
         (STAGES_HIGH downto 1);
 begin
+    -- Delaying by 1 clock cycle means we will not have
+    -- to place any "additional" flip-flops in the middle.
     single_pipeline : if g_NUM_STAGES = 1 generate
         o_signal <= i_signal;
     else generate
@@ -258,6 +285,6 @@ end architecture behavioral;
 
 
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- END OF FILE: pipeliner.vhd
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------

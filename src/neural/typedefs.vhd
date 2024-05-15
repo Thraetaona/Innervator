@@ -1,7 +1,7 @@
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- neural_typedefs.vhd is a part of Innervator.
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 
 -- NOTE: You NEED to re-declare used libraries AFTER you instantiate
@@ -149,10 +149,10 @@ package fixed_neural_pkg is
         array (natural range <>) of layer_parameters;
 
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- rtl_synthesis off
 -- pragma translate_off
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
     -- Simulation-Time Pointer types:  You may access these types'
     -- dereferenced variables' values using ".all" suffixes after them.
     -- Also, you may have "dynamically sized" arrays by concatenating
@@ -170,10 +170,10 @@ package fixed_neural_pkg is
     -- This could also be a file of fixed-points as fixed_pkg provides
     -- textio.read, although ONLY in binary, octal, or hex formats.
     type neural_file is file of neural_word;
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- pragma translate_on
 -- rtl_synthesis on
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 
     -- NOTE: These "partially" resize their inputs; they are used as
@@ -400,10 +400,10 @@ end context neural_context;
 -- Simulator is pointless, as even a ModelSim version from 8 years ago
 -- (as of 2024) far outperforms it.
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- rtl_synthesis off
 -- pragma translate_off
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 -- NOTE: Here, in simulation, we OVERWRITE the previous declaration;
 -- this is done because there is no other way to detect whether the
@@ -429,11 +429,11 @@ context neural_context is
 end context neural_context;
 */
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- pragma translate_on
 -- rtl_synthesis on
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- END OF FILE: neural_typedefs.vhd
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------

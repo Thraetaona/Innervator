@@ -1,7 +1,7 @@
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- network.vhd is a part of Innervator.
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 
 library ieee;
@@ -19,22 +19,22 @@ entity network is
         g_BATCH_SIZE     : positive
     );
     port (
-        inputs  : in  neural_bvector
+        i_inputs  : in  neural_bvector
             (0 to g_NETWORK_PARAMS(g_NETWORK_PARAMS'low).dims.cols-1);
-        outputs : out neural_bvector
+        o_outputs : out neural_bvector
             (0 to g_NETWORK_PARAMS(g_NETWORK_PARAMS'high).dims.rows-1);
         /* Sequential (pipeline) controllers */
-        i_clk   : in  std_ulogic; -- Clock
-        i_rst   : in  std_ulogic; -- Reset
-        i_fire  : in  std_ulogic; -- Start/fire up all the layesr
-        o_done  : out std_ulogic  -- Is the network done processing?
+        i_clk     : in  std_ulogic; -- Clock
+        i_rst     : in  std_ulogic; -- Reset
+        i_fire    : in  std_ulogic; -- Start/fire up all the layesr
+        o_done    : out std_ulogic  -- Is the network done processing?
     );
     
     constant NUM_LAYERS  : positive := g_NETWORK_PARAMS'length;
     -- Number of neurons in the first (i.e., input) layer.
-    constant NUM_INPUTS  : positive := inputs'length;
+    constant NUM_INPUTS  : positive := i_inputs'length;
     -- Number of neurons in the last (i.e., output) layer.
-    constant NUM_OUTPUTS : positive := outputs'length;
+    constant NUM_OUTPUTS : positive := o_outputs'length;
 end entity network;
 
 
@@ -136,7 +136,7 @@ begin
         -- it is not suppoesd to be [i.e., when i=0, it tries to do
         -- i-1 and index the array as (-1)].
         input_layer_condition : if i = 0 generate
-            inputs_im <= inputs;
+            inputs_im <= i_inputs;
             i_fire_im <= i_fire;
         else generate
             inputs_im <= layers_outputs(i-1)
@@ -160,17 +160,17 @@ begin
                 g_BATCH_SIZE    => g_BATCH_SIZE
             )
             port map (
-                inputs  => inputs_im,
-                outputs => layers_outputs(i)
+                i_inputs  => inputs_im,
+                o_outputs => layers_outputs(i)
                     (0 to g_NETWORK_PARAMS(i).dims.rows-1),
-                i_clk   => i_clk, -- Clock
-                i_rst   => i_rst, -- Reset
+                i_clk     => i_clk, -- Clock
+                i_rst     => i_rst, -- Reset
                 -- The first layer (i.e., the "input layer") will
                 -- activate whenever the network is told to.
                 -- Each subsequent layer will "fire" (i.e., activate)
                 -- whenever its previous layer is "done" processing.
-                i_fire  => i_fire_im,
-                o_done  => layers_done(i) -- Is it done processing?
+                i_fire    => i_fire_im,
+                o_done    => layers_done(i) -- Is it done processing?
             );
 
     end generate neural_network;
@@ -192,7 +192,7 @@ begin
         procedure perform_reset is
         begin
             o_done <= '1';
-            outputs <= (others => (others => '0'));
+            o_outputs <= (others => (others => '0'));
         end procedure perform_reset;
     begin
 
@@ -203,11 +203,11 @@ begin
 
                 if network_done = '1' then
                     o_done  <= '1';
-                    outputs <= network_outputs;
+                    o_outputs <= network_outputs;
                 -- "elsif" so 'network_done' lasts at least one cycle.
                 elsif i_fire = '1' then
                     o_done  <= '0';
-                    outputs <= (others => (others => '0'));
+                    o_outputs <= (others => (others => '0'));
                 end if;
                 
             end if;
@@ -232,6 +232,6 @@ begin
 end architecture neural;
 
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- END OF FILE: network.vhd
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------

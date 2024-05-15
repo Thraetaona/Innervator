@@ -1,7 +1,7 @@
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- config.vhd is a part of Innervator.
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 
 library ieee;
@@ -17,9 +17,27 @@ package constants is
     /* FPGA Constrains & Configurations */
     constant c_CLK_FREQ : positive   := 100e6;
     constant c_CLK_PERD : time       := 1 sec / c_CLK_FREQ;
+    -- NOTE: Apparently, some FPGAs (e.g., Xilinx 7 series) work better
+    -- (internally) with active-high resets, because their flip-flops
+    -- were designed to take reset signals as so, and using active-low
+    -- would require an inverter before each flip-flop's SR port; yet,
+    -- board vendors might use negative/active-low signals for their
+    -- reset buttons, because electronics are designed easier that way.
+    -- If we have no control over the (external) polarity of our reset
+    -- signal, a solution is to place a single inverter in the top-
+    -- level hierarchy of the I/O pin logic ("IOB") & use that instead.
+    -- SEE:
+    --     ednasia.com/coding-consideration-for-pipeline-flip-flops
+    --     01signal.com/electronics/iob-registers
+    --
+    --     Also, you might want to "synchronize" (i.e., de-glitch, NOT
+    -- related to sync./async. types of reset) and possibly debounce,
+    -- if it is a button, your external reset signal prior to using it.
+    -- signal.
+    constant c_RST_INVT : boolean    := true; -- Invert ext. reset pin?
+    constant c_RST_POLE : std_ulogic := '0';  -- '0' = int. neg. reset
     constant c_RST_SYNC : boolean    := true; -- false = async. reset
-    constant c_RST_POLE : std_ulogic := '0'; -- '0' = negative reset
-    -- TODO: Have a constant that chooses rising_ or falling_edge?
+    -- TODO: Have a constant that chooses rising_ or falling_edge
     --constant c_EDG_RISE 
     /* Internal Fixed-Point Sizing */
     constant c_WORD_INTG   : natural  := 4;
@@ -33,7 +51,8 @@ package constants is
     /* Neuron Settings */
     -- Number of data to be concurrently processed in a single neuron
     -- (More = Faster network, at the expense of more FPGA logic usage)
-    constant c_BATCH_SIZE : positive := 2; -- < or = to data's length.
+    -- TODO: Make this an array to configure each layer/neuron.
+    constant c_BATCH_SIZE : positive := 1; -- < or = to data's length.
     -- TODO: Add options to select between executing the activation
     -- function and/or setting the done signal inside or outside
     -- the neurons' busy state. (Speed/Size trade-off)
@@ -44,6 +63,6 @@ package constants is
 end package constants;
 
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- END OF FILE: config.vhd
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------

@@ -1,7 +1,7 @@
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- neuron.vhd is a part of Innervator.
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 
 library ieee;
@@ -29,13 +29,15 @@ entity neuron is
     -- NOTE: Apparently, it is better to use Active-High (like o_done
     -- when '1' instead of o_busy '1') internal signals in most FPGAs.
     port (
-        inputs : in  neural_bvector (0 to g_NEURON_WEIGHTS'length-1);
-        output : out neural_bit; -- The "Action Potential"
+        -- NOTE: Do NOT name these as mere 'input' or 'output' because
+        -- std.textio also defines those, and they can conflict.
+        i_inputs : in  neural_bvector (0 to g_NEURON_WEIGHTS'length-1);
+        o_output : out neural_bit; -- The "Action Potential"
         /* Sequential (pipeline) controllers */
-        i_clk  : in  std_ulogic; -- Clock
-        i_rst  : in  std_ulogic; -- Reset
-        i_fire : in  std_ulogic; -- Start/fire up the neuron
-        o_done : out std_ulogic  -- Are we done processing the batch?
+        i_clk    : in  std_ulogic; -- Clock
+        i_rst    : in  std_ulogic; -- Reset
+        i_fire   : in  std_ulogic; -- Start/fire up the neuron
+        o_done   : out std_ulogic  -- Are we done processing the batch?
     );
     
     constant NUM_INPUTS : positive := inputs'length;
@@ -56,13 +58,17 @@ architecture pipelined of neuron is
     type neuron_state_t is (
         idle, busy, done
     );
-    signal neuron_state : neuron_state_t := idle;
+    type pipeline_substate_t is (
+        idle, pre_processing, processing, post_processing, done
+    );
+    signal neuron_state      : neuron_state_t := idle;
+    signal pipeline_substate : pipeline_substate_t := idle;
     
     -- This is the "registered" version of the input signal; given that
     -- our given input itself might reset or become cleared right after
     -- 'i_fire' is set to high, we need to sample and locally store the
     -- input at that time for later use within the processing stages.
-    signal inputs_local : inputs'subtype;
+    signal inputs_local : i_inputs'subtype;
     
     -- Current iteration number (total number of
     -- iterations = number of data / size of batches).
@@ -78,15 +84,16 @@ architecture pipelined of neuron is
     end function activation_function;
     
     
+    -- Multiplier-Accumulator ("MAC")
     procedure mac_unit(
-        signal value_a : in  neural_word;
-        signal value_b : in  neural_bit;
+        signal value_a   : in  neural_word;
+        signal value_b   : in  neural_bit;
         variable sum_in  : in  neural_dword;
         variable sum_out : out neural_dword
     ) is
     begin
-        sum_out := resize(
-            sum_in
+        sum_out := resize( -- Current sum
+            sum_in -- Previous sum
             + -- Add
             resize(
                 value_a
@@ -98,9 +105,9 @@ architecture pipelined of neuron is
         sum_out);     
     end procedure mac_unit;
     
-    signal inputs_unreg  : inputs'element;
+    signal inputs_unreg  : i_inputs'element;
     signal weights_unreg : g_NEURON_WEIGHTS'element;
-    signal inputs_reg    : inputs'element;
+    signal inputs_reg    : i_inputs'element;
     signal weights_reg   : g_NEURON_WEIGHTS'element;
     
     /*
@@ -161,14 +168,14 @@ begin
     -- perform everything in a SINGLE clock cycle.  However, it will
     -- also use a much, much higher number of logic blocks in the FPGA,
     -- meaning that a single neuron with 64 inputs could potentially
-    -- take up 10% of a small FPGA's (e.g., Artix-7) LUT blocks.
+    -- take up 10% of a small FPGA's (e.g., Artix-7) LUTs.
     --     A workaround is to convert the combination logic to a 
     -- sequential (i.e., clocked and stateful) one, where weighted sums
     -- are calculated in small "batches" in each clock cycle; this
     -- does have the disadvantage of requiring MULTIPLE clock cycles
     -- for the entire calculation to be done (e.g., for 64 inputs and
     -- a 100MHz clock, the combinational approach would take 10ns while
-    -- the sequential one, with segments of 2, might take 320ns).
+    -- the sequential one, with segments of 2, might take 320+20ns).
     --     Additionally, if you go with the combination approach while
     -- keeping track of the previous states, you can introduce latches.
     -- Lastly, if you go with the sequential approach, you also need to
@@ -229,7 +236,7 @@ begin
                         neuron_state <= idle;
                         
                         -- Reset back to default values
-                        output        <= to_ufixed(0, output);
+                        o_output        <= to_ufixed(0, o_output);
                         o_done        <= '0';
                         inputs_local  <=
                             (others => to_ufixed(0, inputs_unreg));
@@ -241,13 +248,13 @@ begin
                             resize(g_NEURON_BIAS, weighted_sum);
                             
                         if i_fire = '1' then
-                            inputs_local  <= inputs;
-                            inputs_unreg  <= inputs(0);
-                            weights_unreg <=g_NEURON_WEIGHTS(0);
+                            inputs_local  <= i_inputs;
+                            inputs_unreg  <= i_inputs(0);
+                            weights_unreg <= g_NEURON_WEIGHTS(0);
                             
                             neuron_state <= busy;
                         end if;
-                    -- ------------------------------------------------
+                    -- -------------------------------------------------
                     
                     when busy =>
                         neuron_state <= busy;
@@ -284,7 +291,8 @@ begin
                             */
                               
                             inputs_unreg  <= inputs_local(iter_idx+i);
-                            weights_unreg <= g_NEURON_WEIGHTS(iter_idx+i);                            
+                            weights_unreg <=
+                                g_NEURON_WEIGHTS(iter_idx+i);                            
                             
                             -- Fused Multiply-Adder
                             /*weighted_sum := resize(
@@ -323,13 +331,13 @@ begin
                             --iter_idx     <= 0;
                             neuron_state <= done;
                         end if sum_calculated;
-                    -- ------------------------------------------------
+                    -- -------------------------------------------------
     
                     when done =>
                         -- Perform activation on the weighted sum.
                         -- (It is done here to avoid logic/gate delay
                         -- that'd occur in the previous case's branch)
-                        output       <= 
+                        o_output       <= 
                             activation_function(weighted_sum);
                             
                         -- Signal that we're no longer busy,
@@ -338,21 +346,43 @@ begin
                         
                         -- Go back to the idle state and await new data
                         neuron_state <= idle;
-                    -- ------------------------------------------------
+                    -- -------------------------------------------------
                         
                     -- Hardening in case of "unknown" states
                     when others => -- 1-clock-long cleanup phase
                         perform_reset;
-                    -- ------------------------------------------------
+                    -- -------------------------------------------------
                 end case;
                 
             end if;
         end if;
     end process;
             
+            
+    process (i_clk, i_rst) is
+        procedure perform_reset is
+        begin
+            neuron_state <= idle;
+        end procedure perform_reset;
+    begin
+
+        if not c_RST_SYNC and i_rst = c_RST_POLE then perform_reset;
+        elsif rising_edge(i_clk) then
+            if c_RST_SYNC and i_rst = c_RST_POLE then perform_reset;
+            else
+            
+                case neuron_state is
+                    when idle =>
+                                
+                end case;
+                
+            end if;
+        end if;
+    end process;
+         
 end architecture pipelined;
 
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- END OF FILE: neuron.vhd
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------

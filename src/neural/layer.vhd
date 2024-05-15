@@ -1,7 +1,7 @@
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- SPDX-License-Identifier: LGPL-3.0-or-later or CERN-OHL-W-2.0
 -- layer.vhd is a part of Innervator.
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 
 library ieee;
@@ -24,22 +24,22 @@ entity layer is
         g_BATCH_SIZE    : positive := g_LAYER_WEIGHTS'element'length
     );
     port (
-        inputs  : in  neural_bvector
+        i_inputs  : in  neural_bvector
             (0 to g_LAYER_WEIGHTS'element'length-1);
-        outputs : out neural_bvector
+        o_outputs : out neural_bvector
             (0 to g_LAYER_WEIGHTS'length-1);
         /* Sequential (pipeline) controllers */
-        i_clk   : in  std_ulogic; -- Clock
-        i_rst   : in  std_ulogic; -- Reset
-        i_fire  : in  std_ulogic; -- Start/fire up all the neurons
-        o_done  : out std_ulogic  -- Are we done processing the layer?
+        i_clk     : in  std_ulogic; -- Clock
+        i_rst     : in  std_ulogic; -- Reset
+        i_fire    : in  std_ulogic; -- Start/fire up all the neurons
+        o_done    : out std_ulogic  -- Is the layer processing done?
     );
     
     -- NOTE: This assumes that the upper hierarchy (i.e., network)
     -- supplies the sanitized/actual slices of the layer's parameters.
-    constant NUM_INPUTS  : positive := inputs'length;
+    constant NUM_INPUTS  : positive := i_inputs'length;
     -- NOTE: This one is also the number of "neurons" in this layer.
-    constant NUM_OUTPUTS : positive := outputs'length;
+    constant NUM_OUTPUTS : positive := o_outputs'length;
 end entity layer;
 
 
@@ -56,12 +56,12 @@ begin
                 g_BATCH_SIZE     => g_BATCH_SIZE
             )
             port map (
-                inputs => inputs,
-                output => outputs(i),
-                i_clk  => i_clk,
-                i_rst  => i_rst,
-                i_fire => i_fire,
-                o_done => neurons_done(i)
+                i_inputs => i_inputs,
+                o_output => o_outputs(i),
+                i_clk    => i_clk,
+                i_rst    => i_rst,
+                i_fire   => i_fire,
+                o_done   => neurons_done(i)
             );
     end generate neural_layer;
     
@@ -74,6 +74,6 @@ begin
 end architecture dense;
 
 
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- END OF FILE: layer.vhd
--- --------------------------------------------------------------------
+-- ---------------------------------------------------------------------
