@@ -35,6 +35,8 @@ To innervate means "to supply something with nerves."
 
 Innervator is, aptly, an implementer of *artificial neural networks* within *Programmable Logic Devices.*
 
+Furthermore, these hardware-based neural networks could be named "Innervated Neural Networks," which also appears as INN in INNervator.
+
 ## Foreword
 * Prior to starting this project, I had no experience or training with artificial intelligence ("AI"), electrical engineering, or hardware design;
 * Hardware design is a complex field&mdash;an "unlearn" of computer science; and
