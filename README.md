@@ -80,7 +80,7 @@ Including the periphals (e.g., UART, button debouncer, etc.) and given a network
 |:-|:-:|:-:|
 | Logic LUT | 10233 | 20800|
 | Sliced Reg. | 13954 | 41600 |
-| F7 Mux | 620 | 8150 |
+| F7 Mux. | 620 | 8150 |
 | Slice | 3775 | 8150 |
 | DSP | 30 | 90 |
 | Bonded IOB | 7 | 210 |
