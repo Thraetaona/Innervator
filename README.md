@@ -52,6 +52,16 @@ To ensure maximal compatibility, I tested Innervator across both Xilinx **Vivado
 
 Because I developed Innervator on a small, entry-level FPGA board (i.e., Digilent Arty A7-35T), I faced many challenges in regard to logic resource usage and timing failures; however, this also ensured that Innervator would become very portable and resource-efficient.
 
+In the `./src/config.vhd` file, you will be able to fine-tune Innervator to your liking; almost everything is customizable and generic, down to the polarization/synchronization of reset, fixed-point types' widths, and neurons' batch processing size or pipeline stages.
+
+## Hardware Demo (Arty A7-35T)
+
+I used the four LEDs to "transmit" the network's prediction (i.e., resulting digit in this case); but the same UART interface could later be used to also transmit it back to the computer.
+
+https://github.com/Thraetaona/Innervator/assets/42461518/52132598-aac0-4532-85c9-bce6e69aa214
+
+##### (Note: The "delay" you see between the command prompt and FPGA is primarily due to the UART speed; the actual neural network itself takes ~1000 nanoseconds to process its input.)
+
 ## Simulation
 
 ![image](https://github.com/Thraetaona/Innervator/assets/42461518/d41b6820-9f31-438b-8ec8-4ff57709d11b)
@@ -61,3 +71,19 @@ Because I developed Innervator on a small, entry-level FPGA board (i.e., Digilen
 ### The sample network that was used in said simulation:
 
 ![image](https://github.com/Thraetaona/Innervator/assets/42461518/209362d6-21fd-4f83-a357-e6855daa2485)
+
+## Statistics (Arty A7-35T)
+
+Including the periphals (e.g., UART, button debouncer, etc.) and given a network with an input and 2 neural layers (64 inputs, 20 hidden neurons, and 10 output neurons), 4 bits for integral and 4 bits for fractional widths of fixed-point numerals, no batch processing (one DSP for each neuron), and 3 pipeline stages; Innervator consumed the following resources:
+
+|Resource|Utilization|Total Availability|
+|:-|:-:|:-:|
+| Logic LUT | 10233 | 20800|
+| Sliced Reg. | 13954 | 41600 |
+| F7 Mux | 620 | 8150 |
+| Slice | 3775 | 8150 |
+| DSP | 30 | 90 |
+| Bonded IOB | 7 | 210 |
+| BUFGCTRL | 1 | 32 |
+
+Timing reports were also great; the Worst Negative Slack (WNS) was 1.252 ns, without aggressive synthesis optimizations, given a 100 MHz clock.
