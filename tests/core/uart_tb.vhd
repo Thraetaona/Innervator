@@ -3,6 +3,8 @@
 -- uart_tb.vhd is a part of Innervator.
 -- --------------------------------------------------------------------
 
+-- NOTE: The project really lacks testbenches, even though it works.
+
 
 library ieee;
     use ieee.std_logic_1164.all;
