@@ -204,11 +204,11 @@ begin
             o_rx_done   => byte_read_done,
             o_rx_byte   => byte_read_value,
             -- TODO: Implement the UART Transmitter, too.
-            i_tx_send   => result_ready,
-            i_tx_byte   => result_byte,
+            i_tx_send   => 'Z',
+            i_tx_byte   => (others => 'Z'),
             o_tx_active => open, -- Unused
             o_tx_done   => open, -- Unused
-            o_tx_serial => o_uart
+            o_tx_serial => open
         );
 
 
