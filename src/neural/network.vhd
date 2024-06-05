@@ -15,8 +15,9 @@ library config;
 
 entity network is
     generic (
-        g_NETWORK_PARAMS : network_layers;
-        g_BATCH_SIZE     : positive
+        g_NETWORK_PARAMS  : network_layers;
+        g_BATCH_SIZE      : positive;
+        g_PIPELINE_STAGES : natural
     );
     port (
         i_inputs  : in  neural_bvector
@@ -155,9 +156,10 @@ begin
                 -- in a separate field called .dims.  Here, we have
                 -- simply sliced the "inflated" array, discarding the
                 -- unused/dummy elements based on the true sizes.
-                g_LAYER_WEIGHTS => sanitized_weights,
-                g_LAYER_BIASES  => sanitized_biases,
-                g_BATCH_SIZE    => g_BATCH_SIZE
+                g_LAYER_WEIGHTS   => sanitized_weights,
+                g_LAYER_BIASES    => sanitized_biases,
+                g_BATCH_SIZE      => g_BATCH_SIZE,
+                g_PIPELINE_STAGES => g_PIPELINE_STAGES
             )
             port map (
                 i_inputs  => inputs_im,
@@ -186,7 +188,7 @@ begin
     -- lasted for a single clock cycle and then switched back to 0;
     -- because each layer's done signal was connected to the following
     -- layers' 'fire' signal, continuing to keep said layer's done 
-    -- at 1 would result in proceeding layers to never end firing.
+    -- at 1 would result in proceeding layers never ending firing.
     
     toggle_out : process (i_clk, i_rst) is
         procedure perform_reset is

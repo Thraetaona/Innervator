@@ -17,11 +17,13 @@ library config;
 -- TODO: Generically 'type' these, at least in VHDL-2019.
 entity layer is
     generic (
-        g_LAYER_WEIGHTS : neural_matrix;
-        g_LAYER_BIASES  : neural_vector;
+        g_LAYER_WEIGHTS   : neural_matrix;
+        g_LAYER_BIASES    : neural_vector;
         /* Sequential (pipeline) controllers */
         -- Number of inputs to be processed at a time (default = all)
-        g_BATCH_SIZE    : positive := g_LAYER_WEIGHTS'element'length
+        g_BATCH_SIZE      : positive := g_LAYER_WEIGHTS'element'length;
+        -- Number of pipeline stages/cycle delays (defualt = none)
+        g_PIPELINE_STAGES : natural := 0
     );
     port (
         i_inputs  : in  neural_bvector
@@ -51,9 +53,10 @@ begin
     neural_layer : for i in 0 to NUM_OUTPUTS-1 generate
         neuron_instance : entity work.neuron
             generic map (
-                g_NEURON_WEIGHTS => g_LAYER_WEIGHTS(i),
-                g_NEURON_BIAS    => g_LAYER_BIASES(i),
-                g_BATCH_SIZE     => g_BATCH_SIZE
+                g_NEURON_WEIGHTS  => g_LAYER_WEIGHTS(i),
+                g_NEURON_BIAS     => g_LAYER_BIASES(i),
+                g_BATCH_SIZE      => g_BATCH_SIZE,
+                g_PIPELINE_STAGES => g_PIPELINE_STAGES
             )
             port map (
                 i_inputs => i_inputs,

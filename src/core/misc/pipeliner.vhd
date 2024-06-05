@@ -162,20 +162,6 @@ package body pipeliner is
         -- choices of VHDL and Ada.
         variable pipeline_regs : t_arg_arr (g_NUM_STAGES-2 downto 0);
         
-        -- Synthesis tools will often replace a series of flip-flops
-        -- with better primitives, like shift-registers, that "achieve"
-        -- the same delaying effect.  However, we might sometimes WANT
-        -- to use flip-flops specifically, so we can turn off that
-        -- optimization by using vendor-specific attribute definitions:
-        attribute shreg_extract      : string;
-        attribute register_balancing : string;
-        attribute syn_allow_retiming : boolean;
-        attribute shreg_extract of pipeline_regs : variable is "no";
-        attribute register_balancing of Sig_out : signal is ATTR_REG_BALANCING;
-        attribute syn_allow_retiming of Sig_out : signal is true;
-        -- Also, note that avoiding the usage of explicit reset signals
-        -- may also result in the same shift-register (SRL) conversion.
-        --     ednasia.com/coding-consideration-for-pipeline-flip-flops
     begin    
         pipeline_regs(0) := i_signal when rising_edge(i_clk);
         
@@ -246,7 +232,7 @@ library ieee;
 
 entity pipeliner_single is
     generic (
-        g_NUM_STAGES : natural range 1 to natural'high := 3;
+        g_NUM_STAGES : positive := 2;
         type arg_type
     );
     port (
@@ -257,30 +243,76 @@ entity pipeliner_single is
 
     type arg_arr_type is array (natural range <>) of arg_type;
 end entity pipeliner_single;
- 
+
 architecture behavioral of pipeliner_single is
-    constant STAGES_HIGH : natural := g_NUM_STAGES - 1;
-    signal pipeline_regs : arg_arr_type
-        (STAGES_HIGH downto 1);
-begin
-    -- Delaying by 1 clock cycle means we will not have
-    -- to place any "additional" flip-flops in the middle.
-    single_pipeline : if g_NUM_STAGES = 1 generate
-        o_signal <= i_signal;
-    else generate
+    -- Synthesis tools will often replace a series of flip-flops
+    -- with better primitives, like shift-registers, that "achieve"
+    -- the same delaying effect.  However, we might sometimes WANT
+    -- to use flip-flops specifically, so we can turn off that
+    -- optimization by using vendor-specific attribute definitions.
+    --
+    -- Also, note that avoiding the usage of explicit reset signals
+    -- may also result in the same shift-register (SRL) conversion.
+    --     ednasia.com/coding-consideration-for-pipeline-flip-flops
     
-        pipeline_chain : for j in 1 to STAGES_HIGH generate
+    /* Xilinx ISE */
+    attribute register_balancing : string;
+    /* Xilinx Vivado */
+    attribute shreg_extract : string; -- No shift-reg. conversion
+    /* Altera Quartus */
+    attribute syn_allow_retiming : boolean;
+    
+    -- TODO: Do we also apply these to input/output or just cascades?
+    attribute register_balancing of
+        i_signal : signal is "backward";
+    attribute shreg_extract of
+        i_signal : signal is "no";
+    attribute syn_allow_retiming of
+        i_signal : signal is true;
+    -- Output
+    attribute register_balancing of
+        o_signal : signal is "backward";
+    attribute shreg_extract of
+        o_signal : signal is "no";
+    attribute syn_allow_retiming of
+        o_signal : signal is true;
+begin
+
+    -- NOTE: Concurrent assignments mean that there is no
+    -- delay involved; both wires "connect" and act as one.
+    --
+    -- "Delaying" by 1 stage means that we will not have
+    -- to place any additional flip-flops in the middle.
+    -- The reason is that the unregistered i_signal
+    -- would also have a propagation delay of 1 whenever
+    -- something is assigned to it.
+    single_pipeline : if g_NUM_STAGES = 1 generate
+        o_signal <= i_signal; -- CONCURRENT assignment
+    -- Otherwise, implement actual delay with flip-flops.
+    else generate
+        constant STAGES_HIGH : natural := g_NUM_STAGES - 2;
+        signal pipeline_regs : arg_arr_type
+            (0 to STAGES_HIGH);
+            
+        attribute register_balancing of
+            pipeline_regs : signal is "backward";
+        attribute shreg_extract of
+            pipeline_regs : signal is "no";
+        attribute syn_allow_retiming of
+            pipeline_regs : signal is true;
+    begin
+        pipeline_chain : for j in 0 to STAGES_HIGH generate
             pipeline_register : process (i_clk) begin
                 if rising_edge(i_clk) then
-                    pipeline_regs(j) <= i_signal when (j = 1)
+                    pipeline_regs(j) <= i_signal when j = 0
                         else pipeline_regs(j-1);
                 end if;
             end process pipeline_register;
         end generate pipeline_chain;
     
-        o_signal <= pipeline_regs(STAGES_HIGH);
-    
+        o_signal <= pipeline_regs(STAGES_HIGH); -- CONCURRENT assignment
     end generate;
+    
 end architecture behavioral;
 
 

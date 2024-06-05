@@ -48,15 +48,23 @@ package body activation is
         --
         -- NOTE: ZERO and ONE do not correspond to exactly 0.0 and 1.0;
         -- instead, they are a bit "leaky," similar to Sigmoid's output
+        --
+        -- Actually, these are not really required and only add to the
+        -- problem by introducing additional logic timing delay.
+        /*
         constant ZERO : out_type :=
             to_ufixed(0.0625, out_type'high, out_type'low);
         constant ONE  : out_type :=
             to_ufixed(0.9375, out_type'high, out_type'low);
-            
+        */
+        
         -- A temporary variable is required, because only VHDL-2019
         -- allows conditional assignment (i.e., when...else) in
         -- front of return statements, and we are using VHDL-2008.
         variable result : out_type;
+        
+        --attribute use_dsp : string;
+        --attribute use_dsp of result : variable is "no";
     begin
 
         -- It is rather hard to implement exponents and logarithms
@@ -64,8 +72,8 @@ package body activation is
         -- approximating Sigmoid using the absolute value would
         -- still require 'x' to be divided, very slowly, by (1 + |x|).
         -- So, a linear approximation is used instead.
-        result := ZERO when x < LOWER_BOUND else
-                  ONE  when x > UPPER_BOUND else
+        result := --ZERO when x < LOWER_BOUND else
+                  --ONE  when x > UPPER_BOUND else
                   resize(to_ufixed((LINEAR_M * x) + LINEAR_C), result);
         
         return result;

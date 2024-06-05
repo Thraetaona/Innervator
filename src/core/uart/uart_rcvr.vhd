@@ -25,15 +25,10 @@ architecture receiver of uart is -- [RTL arch.]
     signal bit_index : natural range 0 to DATA_HIGH := 0;
 begin
 
-    -- NOTE: This "double-registers" the incoming data, allowing it to
-    -- be used in the UART's clock domain; avoids metastabiliy problems
-    double_register : entity work.synchronizer
-        generic map (NUM_CASCADES => 2) -- Double (2)
-        port map (
-            clk_in  => i_clk,
-            sig_in  => i_rx_serial,
-            sig_out => synced_serial
-        );    
+    -- NOTE: The input signal is assumed to have been synchronized/
+    -- deglitched beforehand, at the top module.
+    synced_serial <= i_rx_serial; -- CONCURRENT assignment
+     
 
     -- NOTE: As a little history, the reason why the 'start bit' is
     -- checked to be 'active low' as opposed to 'active high' is
@@ -78,15 +73,15 @@ begin
                     when idle =>
                         uart_rx_state <= idle;
                         
-                        if synced_serial = '0' then
-                            uart_rx_state <= started;
-                        end if;
-    
                         -- Reset back to default values
                         o_rx_done <= '0';
                         o_rx_byte <= (others => '0');
                         bit_index <= 0;
-                        tick_cnt  <= 0;                    
+                        tick_cnt  <= 0;       
+                        
+                        if synced_serial = '0' then
+                            uart_rx_state <= started;
+                        end if;
                     -- -------------------------------------------------
                     
                     -- It is important to note that, even after the
@@ -125,7 +120,7 @@ begin
                             -- first; holding type should be 'downto'
                             o_rx_byte(bit_index) <= synced_serial;
                             
-                            -- Check if all bits were indeed received
+                            -- Check if more bits remain to be received
                             if (bit_index < DATA_HIGH) then
                                 bit_index <= bit_index + 1;
                             else

@@ -15,6 +15,7 @@ package constants is
     constant c_DAT_PATH : string :=
         "C:/Users/Thrae/Desktop/Innervator/data";
     /* FPGA Constrains & Configurations */
+    -- Clock
     constant c_CLK_FREQ : positive   := 100e6;
     constant c_CLK_PERD : time       := 1 sec / c_CLK_FREQ;
     -- NOTE: Apparently, some FPGAs (e.g., Xilinx 7 series) work better
@@ -34,9 +35,14 @@ package constants is
     -- related to sync./async. types of reset) and possibly debounce,
     -- if it is a button, your external reset signal prior to using it.
     -- signal.
-    constant c_RST_INVT : boolean    := true; -- Invert ext. reset pin?
-    constant c_RST_POLE : std_ulogic := '0';  -- '0' = int. neg. reset
+    -- Reset (int./ext. = internal/external; neg. = negative)
+    constant c_RST_INVT : boolean    := true; -- Invert ext. reset pin
+    constant c_RST_POLE : std_ulogic := '1';  -- '0' = int. neg. reset
     constant c_RST_SYNC : boolean    := true; -- false = async. reset
+    -- Input port synchronization (num. = number)
+    constant c_SYNC_NUM : natural    := 3; -- Port sync./deglitch num.
+    -- Button/switch debouncing
+    constant c_DBNC_LIM : time       := 30 ms; -- Debounce timeout
     -- TODO: Have a constant that chooses rising_ or falling_edge
     --constant c_EDG_RISE 
     /* Internal Fixed-Point Sizing */
@@ -49,10 +55,15 @@ package constants is
     constant c_FIXED_OFLOW : fixed_overflow_style_type :=
         fixed_saturate;
     /* Neuron Settings */
+    -- TODO: Make these arrays to configure each layer/neuron.
+    --
     -- Number of data to be concurrently processed in a single neuron
     -- (More = Faster network, at the expense of more FPGA logic usage)
-    -- TODO: Make this an array to configure each layer/neuron.
     constant c_BATCH_SIZE : positive := 1; -- < or = to data's length.
+    -- Number of pipelining registers in each neuron; this would be
+    -- the amount in clock cycles of latency in input --> output, too.
+    -- (Less = Faster network, at the expense of route timing failure)
+    constant c_PIPE_STAGE : natural := 3; -- 0 = Disable pipelining
     -- TODO: Add options to select between executing the activation
     -- function and/or setting the done signal inside or outside
     -- the neurons' busy state. (Speed/Size trade-off)
