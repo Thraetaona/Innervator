@@ -88,4 +88,4 @@ Including the periphals (e.g., UART, button debouncer, etc.) and given a network
 | Bonded IOB | 7 | 210 |
 | BUFGCTRL | 1 | 32 |
 
-Timing reports were also great; the Worst Negative Slack (WNS) was 1.252 ns, without aggressive synthesis optimizations, given a 100 MHz clock.
+Timing reports were also great; the Worst Negative Slack (WNS) was *1.252 ns*, without aggressive synthesis optimizations, given a 100 MHz clock.  On the same FPGA, the number of giga-operations per second was *3 GOP/s*, and the total on-chip power draw was *0.189 W.*
