@@ -10,6 +10,8 @@
     <a href="https://github.com/Thraetaona/Innervator/blob/main/docs/innervator_slides.pdf">Slides</a>
     <span> | </span>
     <a href="https://github.com/Thraetaona/Innervator/issues">Issue Tracker</a>
+    <span> | </span>
+    <a href="https://doi.org/10.5281/zenodo.12712832"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.12712832.svg" alt="DOI"></a>
   </h3>
   
 </div>
