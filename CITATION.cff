@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you wish to cite this hardware design, please do so as noted below:"
+authors:
+- family-names: "Memarzanjany"
+  given-names: "Fereydoun"
+  orcid: "https://orcid.org/0000-0003-1393-6804"
+title: "Innervator"
+version: 1.0.0
+doi: 10.5281/zenodo.12712832
+date-released: 2024-06-05
+url: "https://github.com/Thraetaona/Innervator"
