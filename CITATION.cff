@@ -9,3 +9,18 @@ version: 1.0.0
 doi: 10.5281/zenodo.12712831
 date-released: 2024-06-05
 url: "https://github.com/Thraetaona/Innervator"
+preferred-citation:
+  type: report
+  authors:
+  - family-names: "Memarzanjany"
+    given-names: "Fereydoun"
+    orcid: "https://orcid.org/0000-0003-1393-6804"
+  doi: "10.36227/techrxiv.172263165.56660174/v1"
+  journal: "IEEE TechArxiv"
+  month: 8
+  start: 1 # First page number
+  end: 6 # Last page number
+  title: "Innervator: Hardware Acceleration for Neural Networks"
+  issue: 1
+  volume: 1
+  year: 2024
