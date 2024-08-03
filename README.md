@@ -7,11 +7,11 @@
   </p>
 
   <h3>
-    <a href="https://github.com/Thraetaona/Innervator/blob/main/docs/innervator_slides.pdf">Slides</a>
+    <a href="https://doi.org/10.36227/techrxiv.172263165.56660174/v1">*Technical Paper (IEEE TechArxiv)*</a>
     <span> | </span>
-    <a href="https://github.com/Thraetaona/Innervator/issues">Issue Tracker</a>
+    <a href="https://github.com/Thraetaona/Innervator/blob/main/docs/innervator_slides.pdf">Presentation Slides</a>
     <span> | </span>
-    <a href="https://doi.org/10.5281/zenodo.12712831"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.12712831.svg" alt="DOI"></a>
+    <a href="https://doi.org/10.5281/zenodo.12712831">Repository DOI <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.12712831.svg" alt="DOI"></a>
   </h3>
   
 </div>
@@ -19,7 +19,10 @@
 ***
 
 ## Abstract
-Artificial intelligence ("AI") is deployed in various applications, from noise cancellation to image recognition.  AI-based products often come with high hardware and electricity costs, making them inaccessible for consumer devices and small-scale edge electronics.  Inspired by biological brains, deep neural networks ("DNNs") are modeled using mathematical formulae, but general-purpose processors treat otherwise-parallelizable AI algorithms as step-by-step sequential logic.  In contrast, programmable logic devices ("PLDs") can be customized to the specific parameters of a trained DNN, thereby ensuring data-tailored computation and algorithmic parallelism at the register-transfer level.  Furthermore, a subgroup of PLDs, field-programmable gate arrays ("FPGAs"), are dynamically reconfigurable.  So, to improve AI runtime performance, I designed and open-sourced my hardware compiler: Innervator.  Written entirely in VHDL-2008, Innervator takes any DNN's metadata and parameters (e.g., number of layers, neurons per layer, and their weights/biases), generating its synthesizable FPGA hardware description with the appropriate pipelining and batch processing; Innervator is entirely portable and vendor-independent.  As a proof of concept, I used Innervator to implement a sample 8x8-pixel handwritten digit-recognizing neural network in a low-cost AMD Xilinx Artix-7(TM) FPGA @ 100 MHz.  With 3 pipeline stages and 2 batches at about 60% area utilization, the Network achieved ~4.75 GOP/s, predicting the output in 630 ns and under 0.25 W of power.  In comparison, an Intel(R) Core(TM) i7-12700H CPU @ 4.70 GHz would take 40,000-60,000 ns at 45 to 115 W.  Ultimately, Innervator's hardware-accelerated approach bridges the inherent mismatch between current AI algorithms and the general-purpose digital hardware they run on.
+Artificial intelligence ("AI") is deployed in various applications, from noise cancellation to image recognition, but AI-based products often come with high hardware and electricity costs; this makes them inaccessible for consumer devices and small-scale edge electronics.  Inspired by biological brains, deep neural networks ("DNNs") are modeled using mathematical formulae, yet general-purpose processors treat otherwise-parallelizable AI algorithms as step-by-step sequential logic.  In contrast, programmable logic devices ("PLDs") can be customized to the specific parameters of a trained DNN, thereby ensuring data-tailored computation and algorithmic parallelism at the register-transfer level.  Furthermore, a subgroup of PLDs, field-programmable gate arrays ("FPGAs"), are dynamically reconfigurable.  So, to improve AI runtime performance, I designed and open-sourced my hardware compiler: Innervator.  Written entirely in VHDL-2008, Innervator takes any DNN's metadata and parameters (e.g., number of layers, neurons per layer, and their weights/biases), generating its synthesizable FPGA hardware description with the appropriate pipelining and batch processing.  Innervator is entirely portable and vendor-independent.  As a proof of concept, I used Innervator to implement a sample 8x8-pixel handwritten digit-recognizing neural network in a low-cost AMD Xilinx Artix-7(TM) FPGA @ 100 MHz.  With 3 pipeline stages and 2 batches at about 67% LUT utilization, the Network achieved ~7.12 GOP/s, predicting the output in 630 ns and under 0.25 W of power.  In comparison, an Intel(R) Core(TM) i7-12700H CPU @ 4.70 GHz would take 40,000-60,000 ns at 45 to 115 W.  Ultimately, Innervator's hardware-accelerated approach bridges the inherent mismatch between current AI algorithms and the general-purpose digital hardware they run on.
+
+## Technical Paper
+[For academic  researchers, I also wrote a citable technical paper that describes Innervator.  (IEEE TechArxiv)](https://doi.org/10.36227/techrxiv.172263165.56660174/v1)
 
 ## Notice
 Although the Abstract specifically talks about an image-recognizing neural network, I endeavoured to generalize Innervator: in practice, it is capable of implementing any number of neurons and layers, and in any possible application (e.g., speech recognition), not just imagery.  In the `./data` folder, you will find weight and bias parameters that will be used during Innervator's synthesis.  Because of the incredibly broken implementation of VHDL's `std.textio` library across most synthesis tools, I was limited to only reading `std_logic_vector`s from files; due to that, weights and biases had to be pre-formatted in a fixed-point representation.  (More information is available in [`file_parser.vhd`](https://github.com/Thraetaona/Innervator/blob/main/src/neural/utils/file_parser.vhd).
@@ -31,6 +34,8 @@ Interestingly, even though I was completely new to the world of hardware design,
 * [VHDL Language Enhancement](https://gitlab.com/IEEE-P1076/VHDL-Issues/-/issues/312)
 * [Bug in Vivado's `file_open()`](https://support.xilinx.com/s/question/0D54U00008CO8pTSAT/bug-fileopen-is-not-consistent-with-ieee-standards)
 * [Bug in Vivado's `read()`](https://support.xilinx.com/s/question/0D54U00008ADvMRSA1/bug-in-vhdl-textioread-overload-of-real-datatypes-size-mismatch-in-assignment)
+* [GitHub VHDL Syntax Highlighter](https://github.com/orgs/community/discussions/114072)
+* _Synopsys Synplify p2019's Parser Breaks on VHDL-2019 syntax_
 
 ## Nomenclature
 To innervate means "to supply something with nerves."
@@ -76,18 +81,33 @@ https://github.com/Thraetaona/Innervator/assets/42461518/52132598-aac0-4532-85c9
 
 ![image](https://github.com/Thraetaona/Innervator/assets/42461518/209362d6-21fd-4f83-a357-e6855daa2485)
 
-## Statistics (Arty A7-35T)
+## Statistics (Artix-7 35T FPGA)
 
-Including the periphals (e.g., UART, button debouncer, etc.) and given a network with an input and 2 neural layers (64 inputs, 20 hidden neurons, and 10 output neurons), 4 bits for integral and 4 bits for fractional widths of fixed-point numerals, no batch processing (one DSP for each neuron), and 3 pipeline stages; Innervator consumed the following resources:
+Excluding the periphals (e.g., UART, button debouncer, etc.) and given a network with an input and 2 neural layers (64 inputs, 20 hidden neurons, and 10 output neurons), 4 bits for integral and 4 bits for fractional widths of fixed-point numerals, batch processing of 1 **and** 2 (i.e., one/two DSP for each neuron), and 3 pipeline stages; Innervator consumed the following resources:
 
-|Resource|Utilization|Total Availability|
-|:-|:-:|:-:|
-| Logic LUT | 10233 | 20800|
-| Sliced Reg. | 13954 | 41600 |
-| F7 Mux. | 620 | 8150 |
-| Slice | 3775 | 8150 |
-| DSP | 30 | 90 |
-| Bonded IOB | 7 | 210 |
-| BUFGCTRL | 1 | 32 |
+|Resource|Utilization (1)|Utilization (2)|Total Availability|
+|:-|:-|:-|:-|
+| Logic LUT | 10,233 | 13,949 | 20,800|
+| Sliced Reg. | 13,954 | 22,145 | 41,600 |
+| F7 Mux. | 620 | 1,440 | 16,300 |
+| Slice | 3,775 | 6,115 | 8,150 |
+| DSP | 30 | 60 | 90 |
+| Speed (ns) | 1,030 | 639 | N/A |
 
-Timing reports were also great; the Worst Negative Slack (WNS) was *1.252 ns*, without aggressive synthesis optimizations, given a 100 MHz clock.  On the same FPGA, the number of giga-operations per second was *3 GOP/s*, and the total on-chip power draw was *0.189 W.*
+Timing reports were also great; the Worst Negative Slack (WNS) was *1.252 ns*, without aggressive synthesis optimizations, given a 100 MHz clock.  Lastly, on the same FPGA and with two pipeline stages, the number of giga-operations per second was *7.12 GOP/s* (calculations in the [technical paper](https://doi.org/10.36227/techrxiv.172263165.56660174/v1)), and the total on-chip power draw was *0.189 W.*
+
+### Prediction Acuracy Falloff (vs. CPU/floating-point)
+
+| Digit | FPGA | CPU
+|:-|:-|:-|
+| 0 | .30468800 | .10168505 |
+| 1 | .57812500 | .15610851 |
+| 2 | .50781300 | .14220775 |
+| 3 | .21875000 | .19579356 |
+| 4 | .00390625 | .00119471 |
+| 5 | .20703100 | .01840737 |
+| 6 | .21484400 | .00273704 |
+| 7 | .13281300 | .09511474 |
+| 8 | .24218800 | .15363488 |
+| 9 | .69921900 | .71728650 |
+| Speed (ns) | 630 | 40k--60k |
